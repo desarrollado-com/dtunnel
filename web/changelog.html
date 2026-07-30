@@ -36,6 +36,22 @@
     <p class="lead">Historial de versiones del CLI, instalador curl, web y API.
       También en <a href="https://github.com/desarrollado-com/dtunnel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">GitHub</a>.</p>
 
+    <article class="changelog-entry" id="v1-0-6">
+      <header class="changelog-header">
+        <h2><a href="#v1-0-6">1.0.6</a></h2>
+        <time datetime="2026-07-30">30 jul 2026</time>
+      </header>
+      <h3>Añadido</h3>
+      <ul class="docs-list">
+        <li>Heartbeat de túneles (<code>POST /api/tunnels/:subdomain/heartbeat</code>) — limpieza automática sin ping en 10 min.</li>
+        <li>Rate limiting en registro, login y creación de túneles.</li>
+        <li>Límite anónimo por IP (cada visitante su propio slot).</li>
+        <li>Páginas legales: <a href="/terminos.html">Términos</a>, <a href="/privacidad.html">Privacidad</a>, <a href="/uso-aceptable.html">Uso aceptable</a>.</li>
+        <li><a href="/status.html">Página de estado</a> y <code>GET /api/status</code>.</li>
+      </ul>
+      <p class="changelog-install"><strong>Actualizar:</strong> <code>npm install -g @desarrollado/dtunnel@latest</code></p>
+    </article>
+
     <article class="changelog-entry" id="v1-0-5">
       <header class="changelog-header">
         <h2><a href="#v1-0-5">1.0.5</a></h2>
@@ -157,14 +173,9 @@
     </article>
   </main>
 
-  <footer class="footer">
-    <p>dtunnel v1.0.5 ·
-      <a href="/">Inicio</a> ·
-      <a href="/docs.html">Documentación</a> ·
-      <a href="https://github.com/desarrollado-com/dtunnel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md</a>
-    </p>
-  </footer>
+  <footer class="footer" data-site-footer></footer>
   <script src="/js/main.js"></script>
+  <script src="/js/site-footer.js"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>

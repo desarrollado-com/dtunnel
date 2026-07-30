@@ -427,7 +427,14 @@ md-outlined-text-field { width: 100%; }
 .docs-section { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--md-sys-color-surface-container-highest); }
 .docs-section:first-of-type { border-top: none; margin-top: 1rem; }
 .docs-section h2 { font-size: 1.5rem; font-weight: 400; margin-bottom: 1rem; }
+.docs-section h3 { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; font-weight: 500; }
 .docs-section h4 { margin: 1.25rem 0 0.5rem; font-size: 1rem; font-weight: 500; }
+.legal-page h2 { margin: 1.5rem 0 0.75rem; font-size: 1.15rem; font-weight: 500; }
+.legal-page p, .legal-page li { color: var(--md-sys-color-on-surface-variant); line-height: 1.6; }
+.status-pill { display: inline-block; font-weight: 500; padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.9rem; }
+.status-ok { background: color-mix(in srgb, #2e7d32 20%, transparent); color: #81c784; }
+.status-down { background: color-mix(in srgb, #c62828 25%, transparent); color: #ef9a9a; }
+.card-warn { border-color: color-mix(in srgb, #c62828 40%, var(--md-sys-color-outline-variant)); }
 .docs-list { margin: 0.75rem 0 1rem 1.25rem; color: var(--md-sys-color-on-surface-variant); }
 .docs-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
 .docs-table th, .docs-table td { border: 1px solid var(--md-sys-color-outline-variant); padding: 0.75rem 1rem; }

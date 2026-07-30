@@ -11,6 +11,7 @@ import {
   getUserLimits,
   getUserSubdomains,
   countActiveTunnels,
+  countAnonymousTunnelsForIp,
   registerTunnel,
   reserveSubdomain,
   subdomainTaken,
@@ -21,36 +22,48 @@ import {
   publicUser,
   verifyPassword,
   releaseTunnel,
-  releaseAllAnonymousTunnels,
+  releaseAnonymousTunnelsByIp,
+  touchTunnelHeartbeat,
+  findTunnelBySubdomain,
   cleanupStaleTunnels,
+  getAdminStats,
 } from './db.js';
 import { createAdminRouter } from './routes/admin.js';
+import { getClientIp } from './middleware/clientIp.js';
+import { registerLimiter, loginLimiter, tunnelCreateLimiter } from './middleware/rateLimit.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const API_VERSION = process.env.API_VERSION || '1.0.6';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const FRPS_TOKEN = process.env.FRPS_TOKEN || '';
 const FRPS_SERVER = process.env.FRPS_SERVER || 'dtunnel.desarrollado.com';
 const FRPS_PORT = Number(process.env.FRPS_PORT || 7000);
 const DOMAIN = process.env.DOMAIN || 'dtunnel.desarrollado.com';
 const ANON_LIMIT = Number(process.env.ANON_TUNNEL_LIMIT || 1);
-const STALE_TUNNEL_HOURS = Number(process.env.STALE_TUNNEL_HOURS || 2);
+const HEARTBEAT_TIMEOUT_MIN = Number(process.env.HEARTBEAT_TIMEOUT_MIN || 10);
+const STALE_TUNNEL_HOURS = Number(process.env.STALE_TUNNEL_HOURS || 24);
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
   .split(',')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+if (JWT_SECRET === 'dev-secret-change-me' && process.env.NODE_ENV === 'production') {
+  console.warn('ADVERTENCIA: JWT_SECRET por defecto — configura uno seguro en producción');
+}
+
 syncAdminUsers(ADMIN_EMAILS);
 
-const removed = cleanupStaleTunnels(STALE_TUNNEL_HOURS);
+const removed = cleanupStaleTunnels(HEARTBEAT_TIMEOUT_MIN, STALE_TUNNEL_HOURS);
 if (removed > 0) {
   console.log(`Limpieza: ${removed} túnel(es) huérfano(s) eliminado(s)`);
 }
 setInterval(() => {
-  const n = cleanupStaleTunnels(STALE_TUNNEL_HOURS);
+  const n = cleanupStaleTunnels(HEARTBEAT_TIMEOUT_MIN, STALE_TUNNEL_HOURS);
   if (n > 0) console.log(`Limpieza automática: ${n} túnel(es) huérfano(s)`);
-}, 60 * 60 * 1000);
+}, 5 * 60 * 1000);
 
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 
@@ -88,6 +101,10 @@ function adminRequired(req, res, next) {
   next();
 }
 
+function cleanSubdomain(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+}
+
 function randomSubdomain() {
   return randomBytes(4).toString('hex');
 }
@@ -102,15 +119,34 @@ function tunnelUrls(subdomain) {
   };
 }
 
+function canManageTunnel(row, userId, clientIp) {
+  if (!row) return false;
+  if (row.user_id != null) return userId != null && row.user_id === userId;
+  if (row.client_ip && clientIp && row.client_ip !== clientIp) return false;
+  return true;
+}
+
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'dtunnel-api' });
+  res.json({ ok: true, service: 'dtunnel-api', version: API_VERSION });
+});
+
+app.get('/status', (_req, res) => {
+  const stats = getAdminStats();
+  res.json({
+    ok: true,
+    api: 'ok',
+    version: API_VERSION,
+    activeTunnels: stats.activeTunnels,
+    anonTunnels: stats.anonTunnels,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.get('/plans', (_req, res) => {
   res.json({ plans: listPlans().map(publicPlan) });
 });
 
-app.post('/auth/register', (req, res) => {
+app.post('/auth/register', registerLimiter, (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password || password.length < 8) {
     return res.status(400).json({ error: 'Email y contraseña (mín. 8 caracteres) requeridos' });
@@ -129,7 +165,7 @@ app.post('/auth/register', (req, res) => {
   }
 });
 
-app.post('/auth/login', (req, res) => {
+app.post('/auth/login', loginLimiter, (req, res) => {
   const { email, password } = req.body || {};
   const user = findUserByEmail(email);
   if (!user || !verifyPassword(user, password)) {
@@ -185,7 +221,7 @@ app.get('/tunnels', authRequired, (req, res) => {
   res.json({ tunnels });
 });
 
-app.post('/tunnels', authOptional, (req, res) => {
+app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
   if (!FRPS_TOKEN) {
     return res.status(503).json({ error: 'Servidor no configurado (FRPS_TOKEN)' });
   }
@@ -195,6 +231,7 @@ app.post('/tunnels', authOptional, (req, res) => {
     return res.status(400).json({ error: 'Puerto inválido' });
   }
 
+  const clientIp = getClientIp(req);
   const userId = req.user?.userId ?? null;
   const dbUser = userId ? req.dbUser || findUserById(userId) : null;
   if (userId && dbUser && !dbUser.active) {
@@ -202,19 +239,22 @@ app.post('/tunnels', authOptional, (req, res) => {
   }
 
   const limits = getUserLimits(dbUser, getAnonTunnelLimit(ANON_LIMIT));
-  let activeCount = countActiveTunnels(userId);
+  let activeCount = userId == null
+    ? countAnonymousTunnelsForIp(clientIp)
+    : countActiveTunnels(userId);
+
   if (activeCount >= limits.tunnelLimit) {
     if (userId == null) {
-      cleanupStaleTunnels(STALE_TUNNEL_HOURS);
-      releaseAllAnonymousTunnels();
-      activeCount = countActiveTunnels(userId);
+      cleanupStaleTunnels(HEARTBEAT_TIMEOUT_MIN, STALE_TUNNEL_HOURS);
+      releaseAnonymousTunnelsByIp(clientIp);
+      activeCount = countAnonymousTunnelsForIp(clientIp);
     }
     if (activeCount >= limits.tunnelLimit) {
       return res.status(429).json({ error: `Límite de túneles alcanzado (${limits.tunnelLimit})` });
     }
   }
 
-  let subdomain = (req.body?.subdomain || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+  let subdomain = cleanSubdomain(req.body?.subdomain);
 
   if (subdomain) {
     if (!userId) {
@@ -240,7 +280,7 @@ app.post('/tunnels', authOptional, (req, res) => {
     return res.status(409).json({ error: 'Subdominio en uso' });
   }
 
-  const result = registerTunnel(userId, subdomain, port);
+  const result = registerTunnel(userId, subdomain, port, userId == null ? clientIp : null);
 
   const urls = tunnelUrls(subdomain);
   res.status(201).json({
@@ -251,24 +291,48 @@ app.post('/tunnels', authOptional, (req, res) => {
     serverPort: FRPS_PORT,
     token: FRPS_TOKEN,
     persistent: Boolean(userId && req.body?.subdomain),
+    heartbeatIntervalSec: 120,
   });
+});
+
+app.post('/tunnels/:subdomain/heartbeat', authOptional, (req, res) => {
+  const subdomain = cleanSubdomain(req.params.subdomain);
+  if (!subdomain) {
+    return res.status(400).json({ error: 'Subdominio inválido' });
+  }
+  const row = findTunnelBySubdomain(subdomain);
+  if (!row) {
+    return res.status(404).json({ error: 'Túnel no encontrado' });
+  }
+  const userId = req.user?.userId ?? null;
+  const clientIp = getClientIp(req);
+  if (!canManageTunnel(row, userId, clientIp)) {
+    return res.status(403).json({ error: 'No autorizado' });
+  }
+  touchTunnelHeartbeat(subdomain);
+  res.json({ ok: true, subdomain });
 });
 
 app.delete('/tunnels/anonymous', authOptional, (req, res) => {
   if (req.user?.userId) {
     return res.status(403).json({ error: 'Solo para sesiones anónimas' });
   }
-  const removed = releaseAllAnonymousTunnels();
+  const removed = releaseAnonymousTunnelsByIp(getClientIp(req));
   res.json({ ok: true, removed });
 });
 
 app.delete('/tunnels/:subdomain', authOptional, (req, res) => {
-  const subdomain = String(req.params.subdomain || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+  const subdomain = cleanSubdomain(req.params.subdomain);
   if (!subdomain) {
     return res.status(400).json({ error: 'Subdominio inválido' });
   }
   try {
+    const row = findTunnelBySubdomain(subdomain);
     const userId = req.user?.userId ?? null;
+    const clientIp = getClientIp(req);
+    if (row && !canManageTunnel(row, userId, clientIp)) {
+      return res.status(403).json({ error: 'No autorizado para cerrar este túnel' });
+    }
     const result = releaseTunnel(subdomain, userId);
     if (!result.released) {
       return res.status(404).json({ error: 'Túnel no encontrado' });
@@ -285,5 +349,5 @@ app.delete('/tunnels/:subdomain', authOptional, (req, res) => {
 app.use('/admin', createAdminRouter({ authRequired, adminRequired }));
 
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`dtunnel-api en http://127.0.0.1:${PORT}`);
+  console.log(`dtunnel-api v${API_VERSION} en http://127.0.0.1:${PORT}`);
 });

@@ -3,7 +3,7 @@
 # También disponible vía: npm install -g @desarrollado/dtunnel
 set -euo pipefail
 
-DTUNNEL_CLI_VERSION="1.0.5"
+DTUNNEL_CLI_VERSION="1.0.6"
 FRP_VERSION="${FRP_VERSION:-0.61.1}"
 FRPC_BIN_DIR="${CONFIG_DIR}/bin"
 LOCAL_FRPC="${FRPC_BIN_DIR}/frpc"

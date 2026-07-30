@@ -2,7 +2,7 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Versión actual del CLI:** `1.0.5`
+**Versión actual del CLI:** `1.0.6`
 
 ```
 localhost:88080  →  frpc  →  frps (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com

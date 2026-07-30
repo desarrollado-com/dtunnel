@@ -47,7 +47,7 @@ def cmd_list(_: argparse.Namespace) -> int:
         client,
         "import db from './src/db.js'; "
         "console.log(JSON.stringify(db.prepare("
-        "'SELECT id,subdomain,port,user_id,created_at FROM active_tunnels ORDER BY id'"
+        "'SELECT id,subdomain,port,user_id,client_ip,last_heartbeat,created_at FROM active_tunnels ORDER BY id'"
         ").all()));",
     )
     client.close()
@@ -60,7 +60,9 @@ def cmd_list(_: argparse.Namespace) -> int:
         return 0
     for row in rows:
         owner = f"user:{row['user_id']}" if row["user_id"] is not None else "anon"
-        print(f"{row['id']:>3}  {row['subdomain']:<16}  port {row['port']:<5}  {owner}  {row['created_at']}")
+        ip = row.get("client_ip") or "—"
+        hb = row.get("last_heartbeat") or "—"
+        print(f"{row['id']:>3}  {row['subdomain']:<16}  port {row['port']:<5}  {owner}  {ip}  hb:{hb}")
     print(f"\nTotal: {len(rows)}")
     return 0
 

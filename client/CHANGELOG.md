@@ -2,6 +2,16 @@
 
 Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
 
+## [1.0.6] - 2026-07-30
+
+### Añadido
+
+- Proceso `tunnel-heartbeat.js` — mantiene el túnel vivo en la API cada 2 min.
+
+### Cambiado
+
+- Reclamo anónimo solo afecta túneles de la misma IP.
+
 ## [1.0.5] - 2026-07-30
 
 ### Corregido

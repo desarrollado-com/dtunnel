@@ -5,6 +5,22 @@ Todos los cambios notables de dtunnel se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.6] - 2026-07-30
+
+### Añadido
+
+- Heartbeat de túneles (`POST /api/tunnels/:subdomain/heartbeat`) con limpieza automática.
+- Rate limiting en registro, login y creación de túneles.
+- Límite de túneles anónimos **por IP** (cada visitante su propio slot).
+- `GET /api/status` para monitorización pública.
+- Páginas legales: términos, privacidad, uso aceptable.
+- Página `/status.html` de estado del servicio.
+
+### Cambiado
+
+- `DELETE /api/tunnels/anonymous` solo libera túneles de la IP del cliente.
+- Limpieza de huérfanos basada en heartbeat (10 min) o antigüedad (24 h).
+
 ## [1.0.5] - 2026-07-30
 
 ### Añadido
@@ -82,6 +98,7 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - CLI: `dtunnel --port`, `login`, `register`, `reserve`, `down`.
 - Landing y documentación en `web/`.
 
+[1.0.6]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.2...v1.0.3

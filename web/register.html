@@ -27,6 +27,10 @@
     <form id="register-form" class="auth-form">
       <md-outlined-text-field id="email" type="email" label="Email" required></md-outlined-text-field>
       <md-outlined-text-field id="password" type="password" label="Contraseña (mín. 8)" required minlength="8"></md-outlined-text-field>
+      <label class="admin-check" style="margin:1rem 0;display:flex;gap:0.5rem;align-items:flex-start;font-size:0.9rem">
+        <input type="checkbox" id="accept-terms" required style="margin-top:0.2rem">
+        <span>Acepto los <a href="/terminos.html" target="_blank">Términos</a>, la <a href="/privacidad.html" target="_blank">Privacidad</a> y el <a href="/uso-aceptable.html" target="_blank">Uso aceptable</a>.</span>
+      </label>
       <p id="msg" class="form-error" hidden></p>
       <button type="submit" class="btn btn-primary btn-block">Registrarse</button>
     </form>
@@ -39,6 +43,11 @@
       e.preventDefault();
       const msg = document.getElementById('msg');
       msg.hidden = true;
+      if (!document.getElementById('accept-terms').checked) {
+        msg.textContent = 'Debes aceptar los términos para registrarte.';
+        msg.hidden = false;
+        return;
+      }
       try {
         const res = await fetch('/api/auth/register', {
           method: 'POST',
@@ -59,6 +68,8 @@
       }
     });
   </script>
+  <footer class="footer" data-site-footer></footer>
+  <script src="/js/site-footer.js"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>

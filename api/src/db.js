@@ -76,6 +76,8 @@ migrateColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 migrateColumn('users', 'active', 'INTEGER NOT NULL DEFAULT 1');
 migrateColumn('users', 'tunnel_limit_override', 'INTEGER');
 migrateColumn('users', 'reserved_subdomain_limit_override', 'INTEGER');
+migrateColumn('active_tunnels', 'client_ip', 'TEXT');
+migrateColumn('active_tunnels', 'last_heartbeat', 'TEXT');
 
 const DEFAULT_PLANS = [
   {
@@ -283,9 +285,19 @@ export function countActiveTunnels(userId) {
   return db.prepare('SELECT COUNT(*) AS c FROM active_tunnels WHERE user_id = ?').get(userId).c;
 }
 
-export function registerTunnel(userId, subdomain, port) {
-  const stmt = db.prepare('INSERT INTO active_tunnels (user_id, subdomain, port) VALUES (?, ?, ?)');
-  return stmt.run(userId ?? null, subdomain, port);
+export function countAnonymousTunnelsForIp(clientIp) {
+  if (!clientIp) return countActiveTunnels(null);
+  return db.prepare(
+    'SELECT COUNT(*) AS c FROM active_tunnels WHERE user_id IS NULL AND client_ip = ?',
+  ).get(clientIp).c;
+}
+
+export function registerTunnel(userId, subdomain, port, clientIp = null) {
+  const stmt = db.prepare(`
+    INSERT INTO active_tunnels (user_id, subdomain, port, client_ip, last_heartbeat)
+    VALUES (?, ?, ?, ?, datetime('now'))
+  `);
+  return stmt.run(userId ?? null, subdomain, port, clientIp);
 }
 
 export function findTunnelBySubdomain(subdomain) {
@@ -311,12 +323,35 @@ export function releaseAllAnonymousTunnels() {
   return result.changes;
 }
 
-export function cleanupStaleTunnels(maxAgeHours = 2) {
-  const result = db.prepare(`
-    DELETE FROM active_tunnels
-    WHERE created_at < datetime('now', ?)
-  `).run(`-${maxAgeHours} hours`);
+export function releaseAnonymousTunnelsByIp(clientIp) {
+  if (!clientIp) return 0;
+  const result = db.prepare(
+    'DELETE FROM active_tunnels WHERE user_id IS NULL AND client_ip = ?',
+  ).run(clientIp);
   return result.changes;
+}
+
+export function touchTunnelHeartbeat(subdomain) {
+  const result = db.prepare(`
+    UPDATE active_tunnels SET last_heartbeat = datetime('now') WHERE subdomain = ?
+  `).run(String(subdomain).toLowerCase());
+  return result.changes > 0;
+}
+
+export function cleanupStaleTunnels(heartbeatMinutes = 10, maxAgeHours = 24) {
+  const staleHeartbeat = db.prepare(`
+    DELETE FROM active_tunnels
+    WHERE last_heartbeat IS NOT NULL
+      AND last_heartbeat < datetime('now', ?)
+  `).run(`-${heartbeatMinutes} minutes`);
+
+  const staleAge = db.prepare(`
+    DELETE FROM active_tunnels
+    WHERE (last_heartbeat IS NULL OR last_heartbeat = '')
+      AND created_at < datetime('now', ?)
+  `).run(`-${maxAgeHours} hours`);
+
+  return staleHeartbeat.changes + staleAge.changes;
 }
 
 export function subdomainTaken(subdomain) {
@@ -376,7 +411,7 @@ export function listUserTunnels(userId) {
 export function listActiveTunnels() {
   return db.prepare(`
     SELECT
-      at.id, at.user_id, at.subdomain, at.port, at.created_at,
+      at.id, at.user_id, at.subdomain, at.port, at.client_ip, at.last_heartbeat, at.created_at,
       u.email
     FROM active_tunnels at
     LEFT JOIN users u ON u.id = at.user_id

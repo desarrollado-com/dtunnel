@@ -15,6 +15,7 @@ const VERSION = PKG.version;
 const CONFIG_DIR = join(homedir(), '.dtunnel');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 const PID_FILE = join(CONFIG_DIR, 'frpc.pid');
+const HEARTBEAT_PID_FILE = join(CONFIG_DIR, 'heartbeat.pid');
 const STATE_FILE = join(CONFIG_DIR, 'tunnel.json');
 const FRPC_CONF = join(CONFIG_DIR, 'frpc.toml');
 
@@ -51,6 +52,21 @@ function saveTunnelState(state) {
 
 function clearTunnelState() {
   if (existsSync(STATE_FILE)) unlinkSync(STATE_FILE);
+}
+
+function stopHeartbeat() {
+  if (!existsSync(HEARTBEAT_PID_FILE)) return;
+  const pid = Number(readFileSync(HEARTBEAT_PID_FILE, 'utf8'));
+  try { process.kill(pid); } catch { /* ignore */ }
+  unlinkSync(HEARTBEAT_PID_FILE);
+}
+
+function startHeartbeat() {
+  stopHeartbeat();
+  const hbScript = join(__dirname, 'tunnel-heartbeat.js');
+  const child = spawn(process.execPath, [hbScript], { stdio: 'ignore', detached: true });
+  child.unref();
+  writeFileSync(HEARTBEAT_PID_FILE, String(child.pid));
 }
 
 function isPidRunning(pid) {
@@ -311,6 +327,7 @@ async function cmdUp(args) {
     host: data.host || `${data.subdomain}.${DEFAULT_DOMAIN}`,
     startedAt: new Date().toISOString(),
   });
+  startHeartbeat();
 
   console.log('');
   console.log(`${data.httpUrl}  ⟶  http://localhost:${args.port}`);
@@ -320,6 +337,7 @@ async function cmdUp(args) {
 }
 
 async function cmdDown() {
+  stopHeartbeat();
   const state = loadTunnelState();
   const local = getLocalTunnel();
 

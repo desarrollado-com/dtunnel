@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estado del servicio — dtunnel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="top-app-bar">
+    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel</a>
+    <nav class="nav">
+      <a href="/">Inicio</a>
+      <a href="/docs.html">Documentación</a>
+    </nav>
+  </header>
+  <main class="section">
+    <h1>Estado del servicio</h1>
+    <p class="text-muted" id="updated">Comprobando…</p>
+
+    <div class="grid" style="margin-top:2rem;max-width:640px">
+      <article class="card" id="card-api">
+        <h3>API</h3>
+        <p class="status-pill" id="status-api">—</p>
+        <p class="text-muted" style="font-size:0.85rem;margin-top:0.5rem" id="detail-api"></p>
+      </article>
+      <article class="card">
+        <h3>Túneles activos</h3>
+        <p class="price" id="stat-tunnels" style="font-size:2rem">—</p>
+        <p class="text-muted" style="font-size:0.85rem"><span id="stat-anon">—</span> anónimos</p>
+      </article>
+    </div>
+
+    <p class="text-muted" style="margin-top:2rem;font-size:0.9rem">
+      Esta página se actualiza automáticamente cada 60 segundos.
+      Para monitorización externa usa <code>GET /api/health</code> o <code>GET /api/status</code>.
+    </p>
+  </main>
+  <footer class="footer" data-site-footer></footer>
+  <script>
+    async function refresh() {
+      const updated = document.getElementById('updated');
+      const apiPill = document.getElementById('status-api');
+      const apiDetail = document.getElementById('detail-api');
+      const card = document.getElementById('card-api');
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.ok) {
+          apiPill.textContent = 'Operativo';
+          apiPill.className = 'status-pill status-ok';
+          card.classList.remove('card-warn');
+          apiDetail.textContent = `v${data.version} · ${data.timestamp}`;
+          document.getElementById('stat-tunnels').textContent = data.activeTunnels ?? '—';
+          document.getElementById('stat-anon').textContent = data.anonTunnels ?? '—';
+        } else {
+          throw new Error('API no OK');
+        }
+      } catch {
+        apiPill.textContent = 'Interrupción';
+        apiPill.className = 'status-pill status-down';
+        card.classList.add('card-warn');
+        apiDetail.textContent = 'No se pudo contactar la API';
+      }
+      updated.textContent = `Última comprobación: ${new Date().toLocaleString('es')}`;
+    }
+    refresh();
+    setInterval(refresh, 60_000);
+  </script>
+  <script src="/js/site-footer.js"></script>
+  <script src="/js/theme.js"></script>
+</body>
+</html>
