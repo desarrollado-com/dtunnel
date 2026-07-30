@@ -4,11 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — dtunnel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <script type="importmap">{"imports":{"@material/web/":"https://esm.run/@material/web/"}}</script>
+  <script type="module" src="/js/m3.js"></script>
 </head>
 <body>
-  <header class="header">
-    <a href="/" class="logo">dtunnel <span class="admin-badge">admin</span></a>
+  <header class="top-app-bar">
+    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel <span class="admin-badge">admin</span></a>
     <nav class="nav">
       <a href="/dashboard.html">Mi cuenta</a>
       <a href="/docs.html">Documentación</a>
@@ -37,7 +43,7 @@
     <section class="admin-panel" id="panel-users">
       <div class="admin-toolbar">
         <h2>Usuarios</h2>
-        <button type="button" class="btn btn-ghost" id="refresh-users">Actualizar</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="refresh-users">Actualizar</button>
       </div>
       <div class="table-wrap">
         <table class="admin-table" id="users-table">

@@ -40,7 +40,7 @@ Internet → Nginx (Hestia, TLS wildcard)
 | Edge TLS | Hestia + Let's Encrypt wildcard |
 | API      | Node.js + SQLite                |
 | CLI      | Node.js (`@desarrollado/dtunnel`) + bash (instalador curl) |
-| Web      | HTML/CSS estático en `web/`     |
+| Web      | HTML/CSS estático + [Material Design 3](https://m3.material.io/) |
 
 
 

@@ -4,11 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mi cuenta — dtunnel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <script type="importmap">{"imports":{"@material/web/":"https://esm.run/@material/web/"}}</script>
+  <script type="module" src="/js/m3.js"></script>
 </head>
 <body>
-  <header class="header">
-    <a href="/" class="logo">dtunnel</a>
+  <header class="top-app-bar">
+    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel</a>
     <nav class="nav">
       <a href="/docs.html">Documentación</a>
       <a href="#" id="logout">Cerrar sesión</a>
@@ -16,18 +22,17 @@
   </header>
   <main class="section">
     <h1>Mi cuenta</h1>
-    <p id="email" style="color:var(--muted);margin-bottom:0.5rem"></p>
-    <p id="plan-info" style="color:var(--muted);margin-bottom:2rem"></p>
-    <p id="admin-link" hidden style="margin-bottom:2rem"><a href="/admin.html" class="btn btn-ghost">Panel de administración</a></p>
+    <p id="email" class="text-muted" style="margin-bottom:0.5rem"></p>
+    <p id="plan-info" class="text-muted" style="margin-bottom:2rem"></p>
+    <p id="admin-link" hidden style="margin-bottom:2rem">
+      <md-outlined-button href="/admin.html">Panel de administración</md-outlined-button>
+    </p>
 
     <h2>Reservar subdominio</h2>
-    <form id="reserve-form" style="max-width:400px;margin-bottom:2rem">
-      <div class="form-group">
-        <label for="name">Nombre (ej. mi-api)</label>
-        <input type="text" id="name" pattern="[a-z0-9-]{3,32}" required placeholder="mi-api">
-      </div>
+    <form id="reserve-form" class="auth-form" style="max-width:400px;margin-bottom:2rem">
+      <md-outlined-text-field id="name" label="Nombre (ej. mi-api)" pattern="[a-z0-9-]{3,32}" required></md-outlined-text-field>
       <p id="reserve-msg" class="form-error" hidden></p>
-      <button type="submit" class="btn btn-primary">Reservar</button>
+      <md-filled-button type="submit">Reservar</md-filled-button>
     </form>
 
     <h2>Mis subdominios</h2>
@@ -55,7 +60,7 @@ dtunnel --port 88080 --subdomain mi-api</code></pre>
       const ul = document.getElementById('subdomains');
       ul.innerHTML = data.subdomains.length
         ? data.subdomains.map(s => `<li><a href="https://${s}.dtunnel.desarrollado.com">${s}.dtunnel.desarrollado.com</a></li>`).join('')
-        : '<li style="color:var(--muted)">Ninguno reservado aún</li>';
+        : '<li class="text-muted">Ninguno reservado aún</li>';
     }
 
     document.getElementById('reserve-form').addEventListener('submit', async (e) => {
