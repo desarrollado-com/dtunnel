@@ -504,6 +504,8 @@ md-outlined-text-field { width: 100%; }
 .btn-danger { color: var(--md-sys-color-error); }
 .empty-cell { text-align: center; color: var(--md-sys-color-on-surface-variant); padding: 2rem !important; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 0.25rem; justify-content: flex-end; }
+.anon-ip-header td { background: var(--md-sys-color-surface-container-high); font-size: 0.9rem; }
+.anon-tunnel-row .anon-ip-indent { color: var(--md-sys-color-on-surface-variant); font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.85rem; }
 
 .changelog-page { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
 .changelog-entry { margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--md-sys-color-outline-variant); }

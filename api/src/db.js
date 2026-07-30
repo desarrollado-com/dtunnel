@@ -491,6 +491,26 @@ export function listActiveTunnels() {
   `).all();
 }
 
+export function listAnonymousTunnels() {
+  return db.prepare(`
+    SELECT id, subdomain, port, client_ip, last_heartbeat, created_at
+    FROM active_tunnels
+    WHERE user_id IS NULL
+    ORDER BY client_ip, created_at DESC
+  `).all();
+}
+
+export function closeAnonymousTunnelsByIp(clientIp) {
+  if (!clientIp) return { closed: 0, subdomains: [] };
+  const rows = db.prepare(
+    'SELECT id, subdomain FROM active_tunnels WHERE user_id IS NULL AND client_ip = ?',
+  ).all(clientIp);
+  for (const row of rows) {
+    deleteTunnel(row.id);
+  }
+  return { closed: rows.length, subdomains: rows.map((r) => r.subdomain) };
+}
+
 export function findTunnelById(id) {
   return db.prepare('SELECT * FROM active_tunnels WHERE id = ?').get(id);
 }

@@ -3,6 +3,7 @@ import { appendAuditLog, listAuditLogs, purgeAuditLogsOlderThan } from '../audit
 import { getClientIp } from '../middleware/clientIp.js';
 import {
   adminReleaseSubdomain,
+  closeAnonymousTunnelsByIp,
   cleanupStaleTunnels,
   createPlan,
   deleteTunnel,
@@ -13,6 +14,7 @@ import {
   getAdminStats,
   getAnonTunnelLimit,
   listActiveTunnels,
+  listAnonymousTunnels,
   listPlans,
   listReservedSubdomains,
   listUsers,
@@ -240,6 +242,38 @@ export function createAdminRouter({ authRequired, adminRequired }) {
       createdAt: t.created_at,
     }));
     res.json({ tunnels });
+  });
+
+  router.get('/tunnels/anonymous', (_req, res) => {
+    const rows = listAnonymousTunnels();
+    const groupsMap = new Map();
+    for (const row of rows) {
+      const clientIp = row.client_ip || null;
+      const key = clientIp || '__unknown__';
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, { clientIp, tunnels: [] });
+      }
+      groupsMap.get(key).tunnels.push({
+        id: row.id,
+        subdomain: row.subdomain,
+        port: row.port,
+        lastHeartbeat: row.last_heartbeat,
+        createdAt: row.created_at,
+      });
+    }
+    const groups = [...groupsMap.values()]
+      .map((g) => ({ ...g, count: g.tunnels.length }))
+      .sort((a, b) => b.count - a.count);
+    res.json({ total: rows.length, groups, anonTunnelLimit: getAnonTunnelLimit() });
+  });
+
+  router.post('/tunnels/anonymous/close-by-ip', (req, res) => {
+    const ip = String(req.body?.ip || '').trim();
+    if (!ip) return res.status(400).json({ error: 'ip requerida' });
+    const { closed, subdomains } = closeAnonymousTunnelsByIp(ip);
+    for (const sub of subdomains) unregisterTunnel(sub);
+    audit(req, 'tunnel.close_anon_ip', 'ip', ip, { closed, subdomains });
+    res.json({ ok: true, closed, subdomains });
   });
 
   router.delete('/tunnels/:id', (req, res) => {

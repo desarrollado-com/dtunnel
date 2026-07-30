@@ -119,6 +119,45 @@ async function loadTunnels() {
   `).join('') : '<tr><td colspan="7" class="empty-cell">No hay túneles activos</td></tr>';
 }
 
+async function loadAnonymous() {
+  const data = await api('/tunnels/anonymous');
+  if (!data) return;
+  const limit = data.anonTunnelLimit ?? '—';
+  document.getElementById('anonymous-meta').textContent =
+    `${data.total} túnel(es) anónimo(s) en ${data.groups.length} IP(s) · límite por IP: ${limit}`;
+  const tbody = document.querySelector('#anonymous-table tbody');
+  if (!data.groups.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No hay túneles anónimos activos</td></tr>';
+    return;
+  }
+  const rows = [];
+  for (const group of data.groups) {
+    const ipLabel = group.clientIp || '(sin IP)';
+    const ipAttr = group.clientIp || '';
+    rows.push(`
+      <tr class="anon-ip-header">
+        <td colspan="5"><strong>${ipLabel}</strong> · ${group.count} túnel(es)</td>
+        <td class="admin-actions">
+          ${group.clientIp ? `<button type="button" class="btn btn-ghost btn-sm" data-close-anon-ip="${encodeURIComponent(group.clientIp)}">Cerrar IP</button>` : ''}
+        </td>
+      </tr>
+    `);
+    for (const tunnel of group.tunnels) {
+      rows.push(`
+        <tr class="anon-tunnel-row">
+          <td class="anon-ip-indent">${ipLabel}</td>
+          <td><a href="https://${tunnel.subdomain}.${TUNNEL_DOMAIN}" target="_blank" rel="noopener"><code>${tunnel.subdomain}</code></a></td>
+          <td>${tunnel.port}</td>
+          <td>${fmtDate(tunnel.lastHeartbeat)}</td>
+          <td>${fmtDate(tunnel.createdAt)}</td>
+          <td><button type="button" class="btn btn-ghost btn-sm" data-delete-tunnel="${tunnel.id}">Cerrar</button></td>
+        </tr>
+      `);
+    }
+  }
+  tbody.innerHTML = rows.join('');
+}
+
 async function loadSettings() {
   const data = await api('/settings');
   if (!data) return;
@@ -205,6 +244,7 @@ document.getElementById('admin-tabs').addEventListener('click', (e) => {
 
 document.getElementById('refresh-users').addEventListener('click', loadUsers);
 document.getElementById('refresh-tunnels').addEventListener('click', loadTunnels);
+document.getElementById('refresh-anonymous').addEventListener('click', loadAnonymous);
 document.getElementById('refresh-subdomains').addEventListener('click', loadSubdomains);
 document.getElementById('refresh-logs').addEventListener('click', loadLogs);
 document.getElementById('logs-search').addEventListener('keydown', (e) => {
@@ -231,6 +271,7 @@ async function suspendUser(userId) {
   loadUsers();
   loadOverview();
   loadTunnels();
+  loadAnonymous();
   loadLogs();
 }
 
@@ -267,6 +308,34 @@ document.getElementById('tunnels-table').addEventListener('click', async (e) => 
   if (!id) return;
   if (!confirm('¿Cerrar este túnel en la base de datos?')) return;
   await api(`/tunnels/${id}`, { method: 'DELETE' });
+  loadTunnels();
+  loadAnonymous();
+  loadOverview();
+  loadLogs();
+});
+
+document.getElementById('anonymous-table').addEventListener('click', async (e) => {
+  const ipEnc = e.target.dataset.closeAnonIp;
+  if (ipEnc) {
+    const ip = decodeURIComponent(ipEnc);
+    if (!confirm(`¿Cerrar todos los túneles anónimos de la IP ${ip}?`)) return;
+    const data = await api('/tunnels/anonymous/close-by-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ip }),
+    });
+    if (!data) return;
+    alert(`Cerrados: ${data.closed} túnel(es)`);
+    loadAnonymous();
+    loadTunnels();
+    loadOverview();
+    loadLogs();
+    return;
+  }
+  const id = Number(e.target.dataset.deleteTunnel);
+  if (!id) return;
+  if (!confirm('¿Cerrar este túnel anónimo?')) return;
+  await api(`/tunnels/${id}`, { method: 'DELETE' });
+  loadAnonymous();
   loadTunnels();
   loadOverview();
   loadLogs();
@@ -402,7 +471,7 @@ async function init() {
   const me = await api('/me');
   if (!me) return;
   document.getElementById('admin-email').textContent = me.email;
-  await Promise.all([loadOverview(), loadUsers(), loadPlans(), loadTunnels(), loadSubdomains(), loadLogs(), loadSettings()]);
+  await Promise.all([loadOverview(), loadUsers(), loadPlans(), loadTunnels(), loadAnonymous(), loadSubdomains(), loadLogs(), loadSettings()]);
 }
 
 init();
