@@ -68,10 +68,42 @@ function getLocalTunnel() {
   const pid = state?.pid ?? (existsSync(PID_FILE) ? Number(readFileSync(PID_FILE, 'utf8')) : null);
   if (!isPidRunning(pid)) {
     if (existsSync(PID_FILE)) unlinkSync(PID_FILE);
-    if (state && !isPidRunning(state.pid)) clearTunnelState();
     return null;
   }
   return { ...state, pid, running: true };
+}
+
+function getStaleTunnelState() {
+  if (getLocalTunnel()) return null;
+  return loadTunnelState();
+}
+
+async function releaseTunnelRemote(subdomain) {
+  if (!subdomain) return;
+  const cfg = loadConfig();
+  const base = process.env.DTUNNEL_API_URL || cfg.apiUrl || DEFAULT_API;
+  const headers = { ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}) };
+  const res = await fetch(`${base}/tunnels/${encodeURIComponent(subdomain)}`, {
+    method: 'DELETE',
+    headers,
+  });
+  if (res.status === 404) return;
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+}
+
+async function releaseStaleTunnel() {
+  const stale = getStaleTunnelState();
+  if (!stale?.subdomain) return;
+  try {
+    await releaseTunnelRemote(stale.subdomain);
+  } catch {
+    /* ignore — puede que ya no exista en el servidor */
+  }
+  clearTunnelState();
+  if (existsSync(FRPC_CONF)) unlinkSync(FRPC_CONF);
 }
 
 function parseArgs(argv) {
@@ -202,13 +234,26 @@ subdomain = "${subdomain}"
 async function cmdUp(args) {
   if (!args.port) { usage(); process.exit(1); }
 
+  await releaseStaleTunnel();
+
   const body = { port: args.port };
   if (args.subdomain) body.subdomain = args.subdomain;
 
-  const data = await apiFetch('/tunnels', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  let data;
+  try {
+    data = await apiFetch('/tunnels', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    if (String(err.message).includes('Límite de túneles')) {
+      console.error(err.message);
+      console.error('Ejecuta: dtunnel down');
+      console.error('Si el túnel ya no corre localmente, dtunnel down libera el registro en el servidor.');
+      process.exit(1);
+    }
+    throw err;
+  }
 
   const frpc = await ensureFrpcBinary();
   if (!frpc) {
@@ -234,6 +279,7 @@ async function cmdUp(args) {
   writeFileSync(PID_FILE, String(child.pid));
   saveTunnelState({
     pid: child.pid,
+    tunnelId: data.tunnelId,
     subdomain: data.subdomain,
     port: args.port,
     httpUrl: data.httpUrl,
@@ -249,14 +295,25 @@ async function cmdUp(args) {
   console.log('Ctrl+C no detiene el túnel. Usa: dtunnel down');
 }
 
-function cmdDown() {
+async function cmdDown() {
+  const state = loadTunnelState();
   const local = getLocalTunnel();
+
   if (local?.pid) {
     try { process.kill(local.pid); } catch { /* ignore */ }
   } else if (existsSync(PID_FILE)) {
     const pid = Number(readFileSync(PID_FILE, 'utf8'));
     try { process.kill(pid); } catch { /* ignore */ }
   }
+
+  if (state?.subdomain) {
+    try {
+      await releaseTunnelRemote(state.subdomain);
+    } catch (err) {
+      console.warn(`No se pudo liberar en el servidor: ${err.message}`);
+    }
+  }
+
   if (existsSync(PID_FILE)) unlinkSync(PID_FILE);
   if (existsSync(FRPC_CONF)) unlinkSync(FRPC_CONF);
   clearTunnelState();
@@ -308,6 +365,12 @@ async function cmdList(what) {
   }
 
   if (!local && remote.length === 0) {
+    const stale = getStaleTunnelState();
+    if (stale?.subdomain) {
+      console.log('HUÉRFANO (local sin proceso, aún en servidor)');
+      console.log(`  ${stale.subdomain.padEnd(16)} localhost:${stale.port}  (ejecuta: dtunnel down)`);
+      return;
+    }
     console.log('No hay túneles activos.');
     if (!cfg.token) console.log('Inicia sesión con dtunnel login para ver túneles de tu cuenta.');
     return;
@@ -337,7 +400,7 @@ switch (args.cmd) {
   case 'login': await cmdLogin(); break;
   case 'register': await cmdRegister(); break;
   case 'reserve': await cmdReserve(args.subdomain); break;
-  case 'down': cmdDown(); break;
+  case 'down': await cmdDown(); break;
   case 'status': cmdStatus(); break;
   case 'version': cmdVersion(); break;
   case 'install-frpc': await cmdInstallFrpc(); break;

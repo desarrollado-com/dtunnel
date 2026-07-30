@@ -5,6 +5,19 @@ Todos los cambios notables de dtunnel se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.4] - 2026-07-30
+
+### Añadido
+
+- `DELETE /api/tunnels/:subdomain` — libera el túnel en el servidor al hacer `dtunnel down`.
+- Limpieza automática de túneles huérfanos en la API (más de 2 h sin actividad).
+- `dtunnel --list up` muestra túneles huérfanos locales pendientes de liberar.
+
+### Corregido
+
+- `dtunnel down` ya no deja registros fantasma en la API (causaban "Límite de túneles alcanzado").
+- `dtunnel --port` libera automáticamente un túnel local muerto antes de crear uno nuevo.
+
 ## [1.0.3] - 2026-07-29
 
 ### Añadido
@@ -53,6 +66,7 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - CLI: `dtunnel --port`, `login`, `register`, `reserve`, `down`.
 - Landing y documentación en `web/`.
 
+[1.0.4]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.0...v1.0.1

@@ -288,6 +288,32 @@ export function registerTunnel(userId, subdomain, port) {
   return stmt.run(userId ?? null, subdomain, port);
 }
 
+export function findTunnelBySubdomain(subdomain) {
+  return db.prepare('SELECT * FROM active_tunnels WHERE subdomain = ?').get(String(subdomain).toLowerCase());
+}
+
+export function releaseTunnel(subdomain, userId = undefined) {
+  const row = findTunnelBySubdomain(subdomain);
+  if (!row) return { released: false };
+  if (row.user_id != null) {
+    if (userId == null || row.user_id !== userId) {
+      const err = new Error('No autorizado para cerrar este túnel');
+      err.code = 'FORBIDDEN';
+      throw err;
+    }
+  }
+  deleteTunnel(row.id);
+  return { released: true, id: row.id };
+}
+
+export function cleanupStaleTunnels(maxAgeHours = 2) {
+  const result = db.prepare(`
+    DELETE FROM active_tunnels
+    WHERE created_at < datetime('now', ?)
+  `).run(`-${maxAgeHours} hours`);
+  return result.changes;
+}
+
 export function subdomainTaken(subdomain) {
   return db.prepare('SELECT id FROM active_tunnels WHERE subdomain = ?').get(subdomain);
 }

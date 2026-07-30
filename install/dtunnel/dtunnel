@@ -3,7 +3,7 @@
 # También disponible vía: npm install -g @desarrollado/dtunnel
 set -euo pipefail
 
-DTUNNEL_CLI_VERSION="1.0.3"
+DTUNNEL_CLI_VERSION="1.0.4"
 FRP_VERSION="${FRP_VERSION:-0.61.1}"
 FRPC_BIN_DIR="${CONFIG_DIR}/bin"
 LOCAL_FRPC="${FRPC_BIN_DIR}/frpc"
@@ -148,6 +148,35 @@ api_post() {
   rm -f "$tmp"
 }
 
+api_delete() {
+  local path="$1"
+  local auth="${2:-}"
+  local code
+  if [ -n "$auth" ]; then
+    code=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
+      -H "Authorization: Bearer ${auth}" \
+      "${DTUNNEL_API_URL}${path}")
+  else
+    code=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "${DTUNNEL_API_URL}${path}")
+  fi
+  [ "$code" = "404" ] && return 0
+  [ "$code" -lt 400 ]
+}
+
+release_stale_tunnel() {
+  local pid sub token
+  pid="$(get_local_tunnel_pid)"
+  if [ -n "$pid" ] && is_pid_running "$pid"; then
+    return 0
+  fi
+  [ -f "$STATE_FILE" ] || return 0
+  sub="$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('subdomain',''))" 2>/dev/null || true)"
+  [ -n "$sub" ] || return 0
+  token="$(load_token)"
+  api_delete "/tunnels/${sub}" "$token" || true
+  clear_tunnel_state
+}
+
 load_token() {
   [ -f "$CONFIG_FILE" ] || return 0
   python3 -c "import json; print(json.load(open('$CONFIG_FILE')).get('token',''))" 2>/dev/null || true
@@ -287,7 +316,7 @@ cmd_up() {
     echo "Ya hay un túnel activo. Ejecuta: dtunnel down"
     exit 1
   fi
-  clear_tunnel_state
+  release_stale_tunnel
 
   local body="{\"port\":${port}"
   [ -n "$subdomain" ] && body="${body},\"subdomain\":\"${subdomain}\""
@@ -324,12 +353,20 @@ cmd_up() {
 }
 
 cmd_down() {
-  local pid
+  local pid sub token
+  sub=""
+  if [ -f "$STATE_FILE" ]; then
+    sub="$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('subdomain',''))" 2>/dev/null || true)"
+  fi
   pid="$(get_local_tunnel_pid)"
   if [ -n "$pid" ]; then
     kill "$pid" 2>/dev/null || true
   elif [ -f "$PID_FILE" ]; then
     kill "$(cat "$PID_FILE")" 2>/dev/null || true
+  fi
+  if [ -n "$sub" ]; then
+    token="$(load_token)"
+    api_delete "/tunnels/${sub}" "$token" || echo "WARN: no se pudo liberar ${sub} en el servidor" >&2
   fi
   clear_tunnel_state
   echo "Túnel detenido"
@@ -345,8 +382,15 @@ cmd_status() {
   email="$(load_email)"
 
   if [ -z "$pid" ] || ! is_pid_running "$pid"; then
-    clear_tunnel_state
     echo "Sin túnel activo en esta máquina."
+    if [ -f "$STATE_FILE" ]; then
+      python3 <<PY
+import json
+state = json.load(open("${STATE_FILE}"))
+print("  Registro huérfano en servidor: " + state.get("subdomain", "?"))
+print("  Ejecuta: dtunnel down")
+PY
+    fi
     [ -n "$email" ] && echo "Sesión: ${email}"
     return
   fi

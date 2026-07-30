@@ -20,6 +20,8 @@ import {
   publicPlan,
   publicUser,
   verifyPassword,
+  releaseTunnel,
+  cleanupStaleTunnels,
 } from './db.js';
 import { createAdminRouter } from './routes/admin.js';
 
@@ -31,12 +33,22 @@ const FRPS_SERVER = process.env.FRPS_SERVER || 'dtunnel.desarrollado.com';
 const FRPS_PORT = Number(process.env.FRPS_PORT || 7000);
 const DOMAIN = process.env.DOMAIN || 'dtunnel.desarrollado.com';
 const ANON_LIMIT = Number(process.env.ANON_TUNNEL_LIMIT || 1);
+const STALE_TUNNEL_HOURS = Number(process.env.STALE_TUNNEL_HOURS || 2);
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
   .split(',')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
 syncAdminUsers(ADMIN_EMAILS);
+
+const removed = cleanupStaleTunnels(STALE_TUNNEL_HOURS);
+if (removed > 0) {
+  console.log(`Limpieza: ${removed} túnel(es) huérfano(s) eliminado(s)`);
+}
+setInterval(() => {
+  const n = cleanupStaleTunnels(STALE_TUNNEL_HOURS);
+  if (n > 0) console.log(`Limpieza automática: ${n} túnel(es) huérfano(s)`);
+}, 60 * 60 * 1000);
 
 app.use(cors());
 app.use(express.json());
@@ -219,17 +231,38 @@ app.post('/tunnels', authOptional, (req, res) => {
     return res.status(409).json({ error: 'Subdominio en uso' });
   }
 
-  registerTunnel(userId, subdomain, port);
+  const result = registerTunnel(userId, subdomain, port);
 
   const urls = tunnelUrls(subdomain);
   res.status(201).json({
     ...urls,
     port,
+    tunnelId: result.lastInsertRowid,
     server: FRPS_SERVER,
     serverPort: FRPS_PORT,
     token: FRPS_TOKEN,
     persistent: Boolean(userId && req.body?.subdomain),
   });
+});
+
+app.delete('/tunnels/:subdomain', authOptional, (req, res) => {
+  const subdomain = String(req.params.subdomain || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+  if (!subdomain) {
+    return res.status(400).json({ error: 'Subdominio inválido' });
+  }
+  try {
+    const userId = req.user?.userId ?? null;
+    const result = releaseTunnel(subdomain, userId);
+    if (!result.released) {
+      return res.status(404).json({ error: 'Túnel no encontrado' });
+    }
+    res.json({ ok: true, subdomain });
+  } catch (e) {
+    if (e.code === 'FORBIDDEN') {
+      return res.status(403).json({ error: e.message });
+    }
+    res.status(500).json({ error: 'Error al cerrar túnel' });
+  }
 });
 
 app.use('/admin', createAdminRouter({ authRequired, adminRequired }));

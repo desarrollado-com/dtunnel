@@ -2,6 +2,13 @@
 
 Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
 
+## [1.0.4] - 2026-07-30
+
+### Corregido
+
+- `dtunnel down` libera el túnel en la API (evita límite fantasma).
+- Auto-liberación de túneles locales huérfanos al abrir uno nuevo.
+
 ## [1.0.3] - 2026-07-29
 
 ### Añadido
