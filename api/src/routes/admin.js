@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   createPlan,
   deleteTunnel,
+  findTunnelById,
   findUserById,
   getAdminStats,
   getAnonTunnelLimit,
@@ -16,6 +17,7 @@ import {
   releaseAllUserTunnels,
   updateUser,
 } from '../db.js';
+import { unregisterTunnel } from '../tunnel/native.js';
 
 function normalizePlanInput(body = {}) {
   return {
@@ -105,17 +107,19 @@ export function createAdminRouter({ authRequired, adminRequired }) {
     }
     const user = findUserById(id);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-    const closedTunnels = releaseAllUserTunnels(id);
+    const { changes, subdomains } = releaseAllUserTunnels(id);
+    for (const sub of subdomains) unregisterTunnel(sub);
     const updated = updateUser(id, { active: false });
-    res.json({ ok: true, user: publicUser(updated), closedTunnels });
+    res.json({ ok: true, user: publicUser(updated), closedTunnels: changes });
   });
 
   router.post('/users/:id/close-tunnels', (req, res) => {
     const id = Number(req.params.id);
     const user = findUserById(id);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-    const closedTunnels = releaseAllUserTunnels(id);
-    res.json({ ok: true, closedTunnels });
+    const { changes, subdomains } = releaseAllUserTunnels(id);
+    for (const sub of subdomains) unregisterTunnel(sub);
+    res.json({ ok: true, closedTunnels: changes });
   });
 
   router.get('/plans', (_req, res) => {
@@ -160,8 +164,11 @@ export function createAdminRouter({ authRequired, adminRequired }) {
   });
 
   router.delete('/tunnels/:id', (req, res) => {
-    const result = deleteTunnel(Number(req.params.id));
+    const id = Number(req.params.id);
+    const row = findTunnelById(id);
+    const result = deleteTunnel(id);
     if (!result.changes) return res.status(404).json({ error: 'Túnel no encontrado' });
+    if (row?.subdomain) unregisterTunnel(row.subdomain);
     res.json({ ok: true });
   });
 

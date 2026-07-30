@@ -356,8 +356,9 @@ export function findTunnelBySubdomain(subdomain) {
 }
 
 export function releaseAllUserTunnels(userId) {
+  const rows = db.prepare('SELECT subdomain FROM active_tunnels WHERE user_id = ?').all(userId);
   const result = db.prepare('DELETE FROM active_tunnels WHERE user_id = ?').run(userId);
-  return result.changes;
+  return { changes: result.changes, subdomains: rows.map((r) => r.subdomain) };
 }
 
 export function releaseTunnel(subdomain, userId = undefined) {
@@ -473,6 +474,10 @@ export function listActiveTunnels() {
     LEFT JOIN users u ON u.id = at.user_id
     ORDER BY at.created_at DESC
   `).all();
+}
+
+export function findTunnelById(id) {
+  return db.prepare('SELECT * FROM active_tunnels WHERE id = ?').get(id);
 }
 
 export function deleteTunnel(id) {

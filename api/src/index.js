@@ -1,11 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
+import { createServer } from 'http';
 import { randomBytes } from 'crypto';
 import {
   createUser,
   findUserByEmail,
   findUserById,
+  findTunnelById,
   findUserByResetToken,
   consumePasswordResetToken,
   createPasswordResetToken,
@@ -37,6 +39,11 @@ import { createAdminRouter } from './routes/admin.js';
 import { getClientIp } from './middleware/clientIp.js';
 import { registerLimiter, loginLimiter, tunnelCreateLimiter, forgotPasswordLimiter } from './middleware/rateLimit.js';
 import { sendPasswordResetEmail } from './mail.js';
+import {
+  createTunnelAccessToken,
+  startNativeTunnelServer,
+  unregisterTunnel,
+} from './tunnel/native.js';
 
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS
   || 'https://dtunnel.desarrollado.com,https://dtunnel-admin.desarrollado.com')
@@ -47,11 +54,15 @@ const APP_URL = process.env.APP_URL || 'https://dtunnel.desarrollado.com';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const API_VERSION = process.env.API_VERSION || '1.0.9';
+const API_VERSION = process.env.API_VERSION || '2.0.0';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const FRPS_TOKEN = process.env.FRPS_TOKEN || '';
 const FRPS_SERVER = process.env.FRPS_SERVER || 'dtunnel.desarrollado.com';
 const FRPS_PORT = Number(process.env.FRPS_PORT || 7000);
+const TUNNEL_TRANSPORT = (process.env.TUNNEL_TRANSPORT || 'native').toLowerCase();
+const TUNNEL_HTTP_PORT = Number(process.env.TUNNEL_HTTP_PORT || 18080);
+const useNative = TUNNEL_TRANSPORT === 'native' || TUNNEL_TRANSPORT === 'both';
+const useFrp = TUNNEL_TRANSPORT === 'frp' || TUNNEL_TRANSPORT === 'both';
 const DOMAIN = process.env.DOMAIN || 'dtunnel.desarrollado.com';
 const ANON_LIMIT = Number(process.env.ANON_TUNNEL_LIMIT || 1);
 const HEARTBEAT_TIMEOUT_MIN = Number(process.env.HEARTBEAT_TIMEOUT_MIN || 10);
@@ -293,7 +304,7 @@ app.get('/tunnels', authRequired, (req, res) => {
 });
 
 app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
-  if (!FRPS_TOKEN) {
+  if (useFrp && !FRPS_TOKEN) {
     return res.status(503).json({ error: 'Servidor no configurado (FRPS_TOKEN)' });
   }
 
@@ -354,16 +365,30 @@ app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
   const result = registerTunnel(userId, subdomain, port, userId == null ? clientIp : null);
 
   const urls = tunnelUrls(subdomain);
-  res.status(201).json({
+  const response = {
     ...urls,
     port,
     tunnelId: result.lastInsertRowid,
-    server: FRPS_SERVER,
-    serverPort: FRPS_PORT,
-    token: FRPS_TOKEN,
     persistent: Boolean(userId && req.body?.subdomain),
     heartbeatIntervalSec: 120,
-  });
+  };
+
+  if (useNative) {
+    response.transport = 'native';
+    response.wsUrl = `wss://${DOMAIN}/tunnel/ws`;
+    response.tunnelToken = createTunnelAccessToken(
+      { subdomain, tunnelId: result.lastInsertRowid, port },
+      JWT_SECRET,
+    );
+  }
+  if (useFrp) {
+    response.server = FRPS_SERVER;
+    response.serverPort = FRPS_PORT;
+    response.token = FRPS_TOKEN;
+    if (!useNative) response.transport = 'frp';
+  }
+
+  res.status(201).json(response);
 });
 
 app.post('/tunnels/:subdomain/heartbeat', authOptional, (req, res) => {
@@ -408,6 +433,7 @@ app.delete('/tunnels/:subdomain', authOptional, (req, res) => {
     if (!result.released) {
       return res.status(404).json({ error: 'Túnel no encontrado' });
     }
+    unregisterTunnel(subdomain);
     res.json({ ok: true, subdomain });
   } catch (e) {
     if (e.code === 'FORBIDDEN') {
@@ -419,6 +445,18 @@ app.delete('/tunnels/:subdomain', authOptional, (req, res) => {
 
 app.use('/admin', createAdminRouter({ authRequired, adminRequired }));
 
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`dtunnel-api v${API_VERSION} en http://127.0.0.1:${PORT}`);
+const server = createServer(app);
+
+if (useNative) {
+  startNativeTunnelServer({
+    jwtSecret: JWT_SECRET,
+    domain: DOMAIN,
+    httpPort: TUNNEL_HTTP_PORT,
+    apiServer: server,
+    findTunnelBySubdomain,
+  });
+}
+
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`dtunnel-api v${API_VERSION} en http://127.0.0.1:${PORT} (transport=${TUNNEL_TRANSPORT})`);
 });

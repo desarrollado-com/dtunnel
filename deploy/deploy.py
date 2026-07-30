@@ -135,7 +135,9 @@ def main() -> int:
         f"ADMIN_EMAILS={admin_emails}",
         f"APP_URL={app_url}",
         f"CORS_ORIGINS={cors}",
-        "API_VERSION=1.0.9",
+        "API_VERSION=2.0.0",
+        "TUNNEL_TRANSPORT=native",
+        f"TUNNEL_HTTP_PORT={port}",
     ]
     for key in ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_NAME"):
         if cfg.get(key):
@@ -177,10 +179,16 @@ def main() -> int:
         content = (DTUNNEL_ROOT / "server" / "hestia" / name).read_text(encoding="utf-8")
         upload_text(root, f"/usr/local/hestia/data/templates/web/nginx/{name}", content)
 
-    print("==> Instalando frps")
-    run(root, f"cd {REMOTE_OPT}/server && bash install.sh")
+    print("==> Instalando frps (legacy; omitido si transport=native)")
+    tunnel_transport = cfg.get("TUNNEL_TRANSPORT", "native").lower()
+    if tunnel_transport in ("frp", "both"):
+        run(root, f"cd {REMOTE_OPT}/server && bash install.sh")
+    else:
+        run(root, "docker stop dtunnel_frps 2>/dev/null || true", check=False)
 
     print("==> Construyendo API")
+    if tunnel_transport == "native":
+        run(root, "docker stop dtunnel_frps 2>/dev/null || true", check=False)
     run(root, f"cd {REMOTE_OPT}/api && docker compose build && docker compose up -d")
 
     print("==> Reconstruyendo dominio Hestia (solo dtunnel)")

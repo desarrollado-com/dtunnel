@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.0.6",
+  "version": "2.0.0",
   "description": "Expón tu localhost como URL pública HTTPS en dtunnel.desarrollado.com",
   "type": "module",
   "bin": {
@@ -32,7 +32,10 @@
   },
   "license": "MIT",
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.21.1"
   },
   "scripts": {
     "start": "node bin/dtunnel.js"

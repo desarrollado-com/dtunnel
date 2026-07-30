@@ -14,10 +14,23 @@ const PKG = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8
 const VERSION = PKG.version;
 const CONFIG_DIR = join(homedir(), '.dtunnel');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
-const PID_FILE = join(CONFIG_DIR, 'frpc.pid');
-const HEARTBEAT_PID_FILE = join(CONFIG_DIR, 'heartbeat.pid');
+const PID_FILE = join(CONFIG_DIR, 'tunnel.pid');
+const LEGACY_FRPC_PID_FILE = join(CONFIG_DIR, 'frpc.pid');
 const STATE_FILE = join(CONFIG_DIR, 'tunnel.json');
 const FRPC_CONF = join(CONFIG_DIR, 'frpc.toml');
+const HEARTBEAT_PID_FILE = join(CONFIG_DIR, 'heartbeat.pid');
+
+function getPidPath() {
+  if (existsSync(PID_FILE)) return PID_FILE;
+  if (existsSync(LEGACY_FRPC_PID_FILE)) return LEGACY_FRPC_PID_FILE;
+  return PID_FILE;
+}
+
+function readPid() {
+  const file = getPidPath();
+  if (!existsSync(file)) return null;
+  return Number(readFileSync(file, 'utf8'));
+}
 
 const DEFAULT_API = 'https://dtunnel.desarrollado.com/api';
 const DEFAULT_DOMAIN = 'dtunnel.desarrollado.com';
@@ -81,9 +94,10 @@ function isPidRunning(pid) {
 
 function getLocalTunnel() {
   const state = loadTunnelState();
-  const pid = state?.pid ?? (existsSync(PID_FILE) ? Number(readFileSync(PID_FILE, 'utf8')) : null);
+  const pid = state?.pid ?? readPid();
   if (!isPidRunning(pid)) {
-    if (existsSync(PID_FILE)) unlinkSync(PID_FILE);
+    const file = getPidPath();
+    if (existsSync(file)) unlinkSync(file);
     return null;
   }
   return { ...state, pid, running: true };
@@ -135,11 +149,12 @@ async function releaseStaleTunnel() {
 }
 
 function parseArgs(argv) {
-  const args = { port: null, subdomain: null, cmd: 'up', listWhat: null };
+  const args = { port: null, subdomain: null, cmd: 'up', listWhat: null, frp: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--port' || a === '-p') args.port = Number(argv[++i]);
     else if (a === '--subdomain' || a === '-s') args.subdomain = argv[++i];
+    else if (a === '--frp' || a === '--legacy') args.frp = true;
     else if (a === '--list') { args.cmd = 'list'; args.listWhat = argv[++i]; }
     else if (a === 'login') args.cmd = 'login';
     else if (a === 'down' || a === 'stop') args.cmd = 'down';
@@ -168,7 +183,10 @@ dtunnel — URL pública para tu servidor local
   dtunnel register                     Crear cuenta
   dtunnel reserve <nombre>             Reservar subdominio (requiere login)
   dtunnel down                         Detener túnel
-  dtunnel install-frpc                 Descargar frpc a ~/.dtunnel/bin
+  dtunnel install-frpc                 Descargar frpc (modo legacy --frp)
+
+Modo por defecto: túnel nativo v2 (solo Node.js, sin frpc).
+  dtunnel --frp --port <puerto>        Forzar modo legacy con frpc
 
 Variables:
   DTUNNEL_API_URL   ${DEFAULT_API}
@@ -259,6 +277,74 @@ subdomain = "${subdomain}"
   writeFileSync(FRPC_CONF, content);
 }
 
+async function cmdUpNative(data, args) {
+  const script = join(__dirname, 'native-client.js');
+  const child = spawn(process.execPath, [
+    script,
+    '--ws-url', data.wsUrl,
+    '--token', data.tunnelToken,
+    '--port', String(args.port),
+    '--subdomain', data.subdomain,
+  ], { stdio: 'ignore', detached: true });
+  child.unref();
+  writeFileSync(PID_FILE, String(child.pid));
+  saveTunnelState({
+    mode: 'native',
+    pid: child.pid,
+    tunnelId: data.tunnelId,
+    subdomain: data.subdomain,
+    port: args.port,
+    httpUrl: data.httpUrl,
+    httpsUrl: data.httpsUrl,
+    host: data.host || `${data.subdomain}.${DEFAULT_DOMAIN}`,
+    startedAt: new Date().toISOString(),
+  });
+  startHeartbeat();
+  console.log('');
+  console.log(`${data.httpUrl}  ⟶  http://localhost:${args.port}`);
+  console.log(`${data.httpsUrl}  ⟶  http://localhost:${args.port}`);
+  console.log('');
+  console.log('Túnel nativo v2 (sin frpc). Ctrl+C no detiene el túnel. Usa: dtunnel down');
+}
+
+async function cmdUpFrp(data, args) {
+  const frpc = await ensureFrpcBinary();
+  if (!frpc) {
+    console.error('No se pudo instalar frpc. Ejecuta: dtunnel install-frpc');
+    process.exit(1);
+  }
+
+  writeFrpcToml({
+    server: data.server,
+    serverPort: data.serverPort,
+    token: data.token,
+    subdomain: data.subdomain,
+    port: args.port,
+  });
+
+  const child = spawn(frpc, ['-c', FRPC_CONF], { stdio: 'ignore', detached: true });
+  child.unref();
+  writeFileSync(PID_FILE, String(child.pid));
+  saveTunnelState({
+    mode: 'frp',
+    pid: child.pid,
+    tunnelId: data.tunnelId,
+    subdomain: data.subdomain,
+    port: args.port,
+    httpUrl: data.httpUrl,
+    httpsUrl: data.httpsUrl,
+    host: data.host || `${data.subdomain}.${DEFAULT_DOMAIN}`,
+    startedAt: new Date().toISOString(),
+  });
+  startHeartbeat();
+
+  console.log('');
+  console.log(`${data.httpUrl}  ⟶  http://localhost:${args.port}`);
+  console.log(`${data.httpsUrl}  ⟶  http://localhost:${args.port}`);
+  console.log('');
+  console.log('Modo legacy (frpc). Ctrl+C no detiene el túnel. Usa: dtunnel down');
+}
+
 async function cmdUp(args) {
   if (!args.port) { usage(); process.exit(1); }
 
@@ -295,45 +381,21 @@ async function cmdUp(args) {
     }
   }
 
-  const frpc = await ensureFrpcBinary();
-  if (!frpc) {
-    console.error('No se pudo instalar frpc. Ejecuta: dtunnel install-frpc');
-    process.exit(1);
-  }
-
   if (getLocalTunnel()) {
     console.error('Ya hay un túnel activo. Ejecuta: dtunnel down');
     process.exit(1);
   }
 
-  writeFrpcToml({
-    server: data.server,
-    serverPort: data.serverPort,
-    token: data.token,
-    subdomain: data.subdomain,
-    port: args.port,
-  });
-
-  const child = spawn(frpc, ['-c', FRPC_CONF], { stdio: 'ignore', detached: true });
-  child.unref();
-  writeFileSync(PID_FILE, String(child.pid));
-  saveTunnelState({
-    pid: child.pid,
-    tunnelId: data.tunnelId,
-    subdomain: data.subdomain,
-    port: args.port,
-    httpUrl: data.httpUrl,
-    httpsUrl: data.httpsUrl,
-    host: data.host || `${data.subdomain}.${DEFAULT_DOMAIN}`,
-    startedAt: new Date().toISOString(),
-  });
-  startHeartbeat();
-
-  console.log('');
-  console.log(`${data.httpUrl}  ⟶  http://localhost:${args.port}`);
-  console.log(`${data.httpsUrl}  ⟶  http://localhost:${args.port}`);
-  console.log('');
-  console.log('Ctrl+C no detiene el túnel. Usa: dtunnel down');
+  const useNative = !args.frp && data.wsUrl && data.tunnelToken;
+  if (useNative) {
+    await cmdUpNative(data, args);
+    return;
+  }
+  if (!data.server || !data.token) {
+    console.error('El servidor no devolvió credenciales de túnel. Prueba de nuevo o usa --frp si está habilitado.');
+    process.exit(1);
+  }
+  await cmdUpFrp(data, args);
 }
 
 async function cmdDown() {
@@ -343,9 +405,9 @@ async function cmdDown() {
 
   if (local?.pid) {
     try { process.kill(local.pid); } catch { /* ignore */ }
-  } else if (existsSync(PID_FILE)) {
-    const pid = Number(readFileSync(PID_FILE, 'utf8'));
-    try { process.kill(pid); } catch { /* ignore */ }
+  } else {
+    const pid = readPid();
+    if (pid) try { process.kill(pid); } catch { /* ignore */ }
   }
 
   if (state?.subdomain) {
@@ -360,8 +422,9 @@ async function cmdDown() {
     } catch { /* ignore */ }
   }
 
-  if (existsSync(PID_FILE)) unlinkSync(PID_FILE);
-  if (existsSync(FRPC_CONF)) unlinkSync(FRPC_CONF);
+  for (const f of [PID_FILE, LEGACY_FRPC_PID_FILE, FRPC_CONF]) {
+    if (existsSync(f)) unlinkSync(f);
+  }
   clearTunnelState();
   console.log('Túnel detenido');
 }
@@ -382,7 +445,8 @@ function cmdStatus() {
   console.log(`  Puerto:     localhost:${local.port}`);
   if (local.httpUrl) console.log(`  HTTP:       ${local.httpUrl}`);
   if (local.httpsUrl) console.log(`  HTTPS:      ${local.httpsUrl}`);
-  console.log(`  PID frpc:   ${local.pid}`);
+  console.log(`  Modo:       ${local.mode || 'frp'}`);
+  console.log(`  PID:        ${local.pid}`);
   if (local.startedAt) console.log(`  Desde:      ${local.startedAt}`);
   if (cfg.email) console.log(`  Sesión:     ${cfg.email}`);
 }

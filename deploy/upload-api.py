@@ -45,7 +45,9 @@ def build_api_env(cfg: dict[str, str], jwt_secret: str) -> str:
         f"ADMIN_EMAILS={admin_emails}",
         f"APP_URL={app_url}",
         f"CORS_ORIGINS={cors}",
-        "API_VERSION=1.0.9",
+        "API_VERSION=2.0.0",
+        "TUNNEL_TRANSPORT=native",
+        "TUNNEL_HTTP_PORT=18080",
     ]
     for key in ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_NAME"):
         if cfg.get(key):
@@ -123,10 +125,21 @@ def main() -> int:
     api_env = build_api_env(cfg, jwt_secret)
     upload_api(client)
     upload_text(client, f"{REMOTE_OPT}/.env", api_env)
+    # frps ocupa :18080; el gateway nativo v2 necesita ese puerto en el host.
+    run(client, "docker stop dtunnel_frps 2>/dev/null || true", timeout=30)
     run(client, f"cd {REMOTE_OPT} && docker compose build && docker compose up -d")
     import time
-    time.sleep(4)
-    run(client, "curl -fsS http://127.0.0.1:3001/health")
+    for attempt in range(1, 6):
+        time.sleep(3)
+        _, stdout, _ = client.exec_command("curl -fsS http://127.0.0.1:3001/health", timeout=15)
+        code = stdout.channel.recv_exit_status()
+        if code == 0:
+            print(stdout.read().decode().rstrip())
+            break
+        if attempt == 5:
+            run(client, "docker logs dtunnel_api --tail 30 2>&1", timeout=30)
+            raise RuntimeError("Health check falló tras 5 intentos")
+        print(f"Health check intento {attempt}/5…")
     client.close()
     print("OK — API desplegada")
     return 0

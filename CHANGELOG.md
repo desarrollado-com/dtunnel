@@ -5,6 +5,25 @@ Todos los cambios notables de dtunnel se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.0.0] - 2026-07-30
+
+### Añadido
+
+- **Túnel nativo v2** — sin binario `frpc` (solo Node.js + WebSocket). Evita falsos positivos de antivirus.
+- Gateway HTTP en la API (`:18080`) y WebSocket en `/tunnel/ws`.
+- CLI `dtunnel` usa modo nativo por defecto; `--frp` / `--legacy` para el modo anterior.
+- Documentación: `docs/tunnel-v2-native.md`.
+
+### Cambiado
+
+- API v2.0.0; `TUNNEL_TRANSPORT=native` por defecto.
+- Deploy detiene `frps` antes de levantar la API (comparten puerto 18080).
+- Plantillas Hestia: proxy WebSocket `/tunnel/` → API `:3001`.
+
+### Deprecado
+
+- `frpc` / `frps` siguen disponibles con `TUNNEL_TRANSPORT=frp` o `both` y `dtunnel --frp`.
+
 ## [1.0.9] - 2026-07-30
 
 ### Añadido

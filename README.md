@@ -2,11 +2,13 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Plataforma (web + API):** `1.0.9` · **CLI npm:** `1.0.6`
+**Plataforma (web + API):** `2.0.0` · **CLI npm:** `2.0.0` (publicar con `npm publish`)
 
 ```
-localhost:88080  →  frpc  →  frps (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
+localhost:88080  →  CLI Node (WebSocket)  →  API gateway (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
 ```
+
+v2 usa **túnel nativo** (solo Node.js, sin `frpc`). Modo legacy: `dtunnel --frp --port …`
 
 Repositorio: [github.com/desarrollado-com/dtunnel](https://github.com/desarrollado-com/dtunnel)  
 Paquete npm: [@desarrollado/dtunnel](https://www.npmjs.com/package/@desarrollado/dtunnel)
@@ -22,12 +24,14 @@ dtunnel version
 
 ### Node.js (desarrolladores / Windows sin WSL)
 
-Requiere Node.js 16+. `frpc` se descarga solo al primer túnel (o con `dtunnel install-frpc`) en `~/.dtunnel/bin/`.
+Requiere Node.js 18+. v2 no descarga binarios externos; usa WebSocket nativo.
 
 ```bash
 npm install -g @desarrollado/dtunnel
 dtunnel version
 ```
+
+Modo legacy con `frpc`: `dtunnel --frp --port 88080` (o `dtunnel install-frpc`).
 
 ## Actualizar
 

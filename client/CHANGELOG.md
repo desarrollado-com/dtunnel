@@ -2,6 +2,18 @@
 
 Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
 
+## [2.0.0] - 2026-07-30
+
+### Añadido
+
+- **Túnel nativo v2** — solo Node.js + WebSocket; sin descargar `frpc` (evita falsos positivos de antivirus).
+- `client/bin/native-client.js` — cliente del protocolo nativo.
+
+### Cambiado
+
+- Modo nativo por defecto; `--frp` / `--legacy` para el modo anterior con `frpc`.
+- Requiere Node.js **>= 18**.
+
 ## [1.0.6] - 2026-07-30
 
 ### Añadido
