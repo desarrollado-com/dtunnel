@@ -50,7 +50,9 @@
         if (!res.ok) throw new Error(data.error || 'Error');
         localStorage.setItem('dtunnel_token', data.token);
         localStorage.setItem('dtunnel_email', data.email);
-        window.location.href = '/dashboard.html';
+        localStorage.setItem('dtunnel_is_admin', data.isAdmin ? '1' : '0');
+        const next = new URLSearchParams(window.location.search).get('next');
+        window.location.href = next || (data.isAdmin ? '/admin.html' : '/dashboard.html');
       } catch (err) {
         msg.textContent = err.message;
         msg.hidden = false;

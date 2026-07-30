@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — dtunnel</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <a href="/" class="logo">dtunnel <span class="admin-badge">admin</span></a>
+    <nav class="nav">
+      <a href="/dashboard.html">Mi cuenta</a>
+      <a href="/docs.html">Documentación</a>
+      <a href="#" id="logout">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <div class="admin-header">
+      <h1>Panel de administración</h1>
+      <p id="admin-email" class="admin-subtitle"></p>
+    </div>
+
+    <nav class="admin-tabs" id="admin-tabs">
+      <button type="button" class="admin-tab active" data-tab="overview">Resumen</button>
+      <button type="button" class="admin-tab" data-tab="users">Usuarios</button>
+      <button type="button" class="admin-tab" data-tab="plans">Planes</button>
+      <button type="button" class="admin-tab" data-tab="tunnels">Túneles activos</button>
+      <button type="button" class="admin-tab" data-tab="settings">Ajustes</button>
+    </nav>
+
+    <section class="admin-panel active" id="panel-overview">
+      <div class="admin-stats" id="stats-grid"></div>
+    </section>
+
+    <section class="admin-panel" id="panel-users">
+      <div class="admin-toolbar">
+        <h2>Usuarios</h2>
+        <button type="button" class="btn btn-ghost" id="refresh-users">Actualizar</button>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table" id="users-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Plan</th>
+              <th>Estado</th>
+              <th>Túneles</th>
+              <th>Subdominios</th>
+              <th>Admin</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-panel" id="panel-plans">
+      <div class="admin-toolbar">
+        <h2>Planes y precios</h2>
+        <button type="button" class="btn btn-primary" id="new-plan-btn">Nuevo plan</button>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table" id="plans-table">
+          <thead>
+            <tr>
+              <th>Slug</th>
+              <th>Nombre</th>
+              <th>Precio/mes</th>
+              <th>Túneles</th>
+              <th>Subdominios</th>
+              <th>Custom</th>
+              <th>Activo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-panel" id="panel-tunnels">
+      <div class="admin-toolbar">
+        <h2>Túneles activos</h2>
+        <button type="button" class="btn btn-ghost" id="refresh-tunnels">Actualizar</button>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table" id="tunnels-table">
+          <thead>
+            <tr>
+              <th>Subdominio</th>
+              <th>Puerto</th>
+              <th>Usuario</th>
+              <th>Creado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-panel" id="panel-settings">
+      <h2>Ajustes globales</h2>
+      <form id="settings-form" class="admin-form">
+        <div class="form-group">
+          <label for="anon-limit">Límite de túneles anónimos</label>
+          <input type="number" id="anon-limit" min="0" max="100" required>
+        </div>
+        <p id="settings-msg" class="form-error" hidden></p>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </form>
+    </section>
+  </main>
+
+  <dialog id="user-dialog" class="admin-dialog">
+    <form method="dialog" id="user-form">
+      <h3>Editar usuario</h3>
+      <input type="hidden" id="edit-user-id">
+      <div class="form-group">
+        <label for="edit-user-email">Email</label>
+        <input type="text" id="edit-user-email" disabled>
+      </div>
+      <div class="form-group">
+        <label for="edit-user-plan">Plan</label>
+        <select id="edit-user-plan"></select>
+      </div>
+      <div class="form-group">
+        <label for="edit-user-tunnel-override">Override túneles (vacío = plan)</label>
+        <input type="number" id="edit-user-tunnel-override" min="0" placeholder="—">
+      </div>
+      <div class="form-group">
+        <label for="edit-user-subdomain-override">Override subdominios (vacío = plan)</label>
+        <input type="number" id="edit-user-subdomain-override" min="0" placeholder="—">
+      </div>
+      <label class="admin-check"><input type="checkbox" id="edit-user-active"> Cuenta activa</label>
+      <label class="admin-check"><input type="checkbox" id="edit-user-admin"> Administrador</label>
+      <p id="user-form-msg" class="form-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="user-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="plan-dialog" class="admin-dialog">
+    <form method="dialog" id="plan-form">
+      <h3 id="plan-dialog-title">Plan</h3>
+      <input type="hidden" id="edit-plan-id">
+      <div class="form-group">
+        <label for="edit-plan-slug">Slug</label>
+        <input type="text" id="edit-plan-slug" pattern="[a-z0-9-]+" required>
+      </div>
+      <div class="form-group">
+        <label for="edit-plan-name">Nombre</label>
+        <input type="text" id="edit-plan-name" required>
+      </div>
+      <div class="form-group">
+        <label for="edit-plan-description">Descripción</label>
+        <input type="text" id="edit-plan-description">
+      </div>
+      <div class="admin-form-grid">
+        <div class="form-group">
+          <label for="edit-plan-price-monthly">Precio/mes</label>
+          <input type="number" id="edit-plan-price-monthly" min="0" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-plan-price-yearly">Precio/año</label>
+          <input type="number" id="edit-plan-price-yearly" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="edit-plan-tunnel-limit">Límite túneles</label>
+          <input type="number" id="edit-plan-tunnel-limit" min="0" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-plan-subdomain-limit">Límite subdominios</label>
+          <input type="number" id="edit-plan-subdomain-limit" min="0" required>
+        </div>
+      </div>
+      <label class="admin-check"><input type="checkbox" id="edit-plan-custom-subdomain"> Subdominio personalizado</label>
+      <label class="admin-check"><input type="checkbox" id="edit-plan-active"> Plan activo</label>
+      <p id="plan-form-msg" class="form-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="plan-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

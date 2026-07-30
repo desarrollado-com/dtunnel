@@ -47,4 +47,4 @@ dtunnel --port 88080
 | `client/bin/dtunnel.js` | CLI Node |
 | `client/dtunnel.sh` | CLI bash (instalador curl) |
 | `install/dtunnel/install` | Script instalador universal |
-| `deploy/deploy.py` | Despliegue automatizado |
+| `web/admin.html` | Panel superadmin |

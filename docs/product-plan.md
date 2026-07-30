@@ -75,10 +75,32 @@ dtunnel --port 88080 --subdomain mi-api
 | 2    | Landing `public_html`                          | Hecho  |
 | 3    | API auth + subdominios reservados              | Hecho  |
 | 4    | Instalador curl + npm `@desarrollado/dtunnel`  | Hecho  |
-| 5    | Dashboard, límites por plan, billing           | Futuro |
+| 5    | Panel superadmin (usuarios, planes, límites)   | Hecho  |
+| 6    | Billing / pagos automáticos                    | Futuro |
 
 
 
+
+## Panel superadmin
+
+URL: `https://dtunnel.desarrollado.com/admin.html`
+
+Requiere cuenta con `is_admin` o email listado en `ADMIN_EMAILS` (variable de entorno de la API).
+
+Funciones:
+- Resumen de usuarios, túneles y subdominios
+- Gestión de usuarios (plan, límites override, activar/desactivar, rol admin)
+- CRUD de planes (precios, límites de túneles y subdominios)
+- Cerrar túneles activos desde la base de datos
+- Ajuste del límite de túneles anónimos
+
+Configuración en `secretos/.env.dtunnel`:
+
+```env
+ADMIN_EMAILS=fg@desarrollado.com
+```
+
+Tras añadir el email, redesplegar la API (`python deploy/deploy.py`) y volver a iniciar sesión.
 
 ## Modelo free vs registrado
 

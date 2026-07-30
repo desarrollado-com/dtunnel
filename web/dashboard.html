@@ -16,7 +16,9 @@
   </header>
   <main class="section">
     <h1>Mi cuenta</h1>
-    <p id="email" style="color:var(--muted);margin-bottom:2rem"></p>
+    <p id="email" style="color:var(--muted);margin-bottom:0.5rem"></p>
+    <p id="plan-info" style="color:var(--muted);margin-bottom:2rem"></p>
+    <p id="admin-link" hidden style="margin-bottom:2rem"><a href="/admin.html" class="btn btn-ghost">Panel de administración</a></p>
 
     <h2>Reservar subdominio</h2>
     <form id="reserve-form" style="max-width:400px;margin-bottom:2rem">
@@ -47,6 +49,9 @@ dtunnel --port 88080 --subdomain mi-api</code></pre>
       if (!res.ok) { window.location.href = '/login.html'; return; }
       const data = await res.json();
       document.getElementById('email').textContent = data.email;
+      document.getElementById('plan-info').textContent =
+        `Plan: ${data.planName || data.plan} · Túneles: ${data.limits?.tunnelLimit ?? '—'} · Subdominios: ${data.limits?.reservedSubdomainLimit ?? '—'}`;
+      if (data.isAdmin) document.getElementById('admin-link').hidden = false;
       const ul = document.getElementById('subdomains');
       ul.innerHTML = data.subdomains.length
         ? data.subdomains.map(s => `<li><a href="https://${s}.dtunnel.desarrollado.com">${s}.dtunnel.desarrollado.com</a></li>`).join('')

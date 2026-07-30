@@ -5,14 +5,22 @@ import { randomBytes } from 'crypto';
 import {
   createUser,
   findUserByEmail,
-  verifyPassword,
-  reserveSubdomain,
+  findUserById,
+  getAnonTunnelLimit,
   getReservedSubdomain,
+  getUserLimits,
   getUserSubdomains,
   countActiveTunnels,
   registerTunnel,
+  reserveSubdomain,
   subdomainTaken,
+  syncAdminUsers,
+  listPlans,
+  publicPlan,
+  publicUser,
+  verifyPassword,
 } from './db.js';
+import { createAdminRouter } from './routes/admin.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,7 +30,12 @@ const FRPS_SERVER = process.env.FRPS_SERVER || 'dtunnel.desarrollado.com';
 const FRPS_PORT = Number(process.env.FRPS_PORT || 7000);
 const DOMAIN = process.env.DOMAIN || 'dtunnel.desarrollado.com';
 const ANON_LIMIT = Number(process.env.ANON_TUNNEL_LIMIT || 1);
-const USER_LIMIT = Number(process.env.USER_TUNNEL_LIMIT || 5);
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+syncAdminUsers(ADMIN_EMAILS);
 
 app.use(cors());
 app.use(express.json());
@@ -32,21 +45,33 @@ function authOptional(req, _res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) {
     req.user = null;
+    req.dbUser = null;
     return next();
   }
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    req.dbUser = findUserById(payload.userId);
   } catch {
     req.user = null;
+    req.dbUser = null;
   }
   next();
 }
 
 function authRequired(req, res, next) {
   authOptional(req, res, () => {
-    if (!req.user) return res.status(401).json({ error: 'No autenticado' });
+    if (!req.user || !req.dbUser) return res.status(401).json({ error: 'No autenticado' });
+    if (!req.dbUser.active) return res.status(403).json({ error: 'Cuenta desactivada' });
     next();
   });
+}
+
+function adminRequired(req, res, next) {
+  const isAdmin = Boolean(req.dbUser?.is_admin)
+    || ADMIN_EMAILS.includes(String(req.user?.email || '').toLowerCase());
+  if (!isAdmin) return res.status(403).json({ error: 'Acceso de administrador requerido' });
+  next();
 }
 
 function randomSubdomain() {
@@ -67,6 +92,10 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'dtunnel-api' });
 });
 
+app.get('/plans', (_req, res) => {
+  res.json({ plans: listPlans().map(publicPlan) });
+});
+
 app.post('/auth/register', (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password || password.length < 8) {
@@ -74,8 +103,10 @@ app.post('/auth/register', (req, res) => {
   }
   try {
     const result = createUser(email, password);
-    const token = jwt.sign({ userId: result.lastInsertRowid, email }, JWT_SECRET, { expiresIn: '30d' });
-    res.status(201).json({ token, email });
+    syncAdminUsers(ADMIN_EMAILS);
+    const user = findUserById(result.lastInsertRowid);
+    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.status(201).json({ token, email: user.email, isAdmin: Boolean(user.is_admin) });
   } catch (e) {
     if (String(e.message).includes('UNIQUE')) {
       return res.status(409).json({ error: 'Email ya registrado' });
@@ -90,13 +121,29 @@ app.post('/auth/login', (req, res) => {
   if (!user || !verifyPassword(user, password)) {
     return res.status(401).json({ error: 'Credenciales inválidas' });
   }
+  if (!user.active) {
+    return res.status(403).json({ error: 'Cuenta desactivada' });
+  }
   const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token, email: user.email });
+  res.json({
+    token,
+    email: user.email,
+    isAdmin: Boolean(user.is_admin) || ADMIN_EMAILS.includes(user.email.toLowerCase()),
+  });
 });
 
 app.get('/me', authRequired, (req, res) => {
   const subdomains = getUserSubdomains(req.user.userId);
-  res.json({ email: req.user.email, subdomains: subdomains.map((s) => s.name) });
+  const limits = getUserLimits(req.dbUser, ANON_LIMIT);
+  res.json({
+    ...publicUser(req.dbUser),
+    subdomains: subdomains.map((s) => s.name),
+    limits: {
+      tunnelLimit: limits.tunnelLimit,
+      reservedSubdomainLimit: limits.reservedSubdomainLimit,
+      customSubdomain: limits.customSubdomain,
+    },
+  });
 });
 
 app.post('/subdomains/reserve', authRequired, (req, res) => {
@@ -123,9 +170,14 @@ app.post('/tunnels', authOptional, (req, res) => {
   }
 
   const userId = req.user?.userId ?? null;
-  const limit = userId ? USER_LIMIT : ANON_LIMIT;
-  if (countActiveTunnels(userId) >= limit) {
-    return res.status(429).json({ error: `Límite de túneles alcanzado (${limit})` });
+  const dbUser = userId ? req.dbUser || findUserById(userId) : null;
+  if (userId && dbUser && !dbUser.active) {
+    return res.status(403).json({ error: 'Cuenta desactivada' });
+  }
+
+  const limits = getUserLimits(dbUser, getAnonTunnelLimit(ANON_LIMIT));
+  if (countActiveTunnels(userId) >= limits.tunnelLimit) {
+    return res.status(429).json({ error: `Límite de túneles alcanzado (${limits.tunnelLimit})` });
   }
 
   let subdomain = (req.body?.subdomain || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -133,6 +185,9 @@ app.post('/tunnels', authOptional, (req, res) => {
   if (subdomain) {
     if (!userId) {
       return res.status(401).json({ error: 'Inicia sesión para usar subdominio personalizado' });
+    }
+    if (!limits.customSubdomain) {
+      return res.status(403).json({ error: 'Tu plan no permite subdominios personalizados' });
     }
     const reserved = getReservedSubdomain(subdomain);
     if (!reserved || reserved.user_id !== userId) {
@@ -163,6 +218,8 @@ app.post('/tunnels', authOptional, (req, res) => {
     persistent: Boolean(userId && req.body?.subdomain),
   });
 });
+
+app.use('/admin', createAdminRouter({ authRequired, adminRequired }));
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`dtunnel-api en http://127.0.0.1:${PORT}`);

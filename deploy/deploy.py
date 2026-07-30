@@ -118,10 +118,12 @@ def main() -> int:
     domain = cfg.get("DTUNNEL_DOMAIN", DOMAIN)
 
     server_env = f"FRPS_TOKEN={token}\nFRPS_VHOST_PORT={port}\nFRPS_BIND_PORT=7000\n"
+    admin_emails = cfg.get("ADMIN_EMAILS", "")
     api_env = (
         f"PORT=3001\nJWT_SECRET={jwt_secret}\nFRPS_TOKEN={token}\n"
         f"FRPS_SERVER={domain}\nFRPS_PORT=7000\nDOMAIN={domain}\n"
         f"ANON_TUNNEL_LIMIT=1\nUSER_TUNNEL_LIMIT=5\n"
+        f"ADMIN_EMAILS={admin_emails}\n"
     )
 
     (DTUNNEL_ROOT / "server" / ".env").write_text(server_env, encoding="utf-8")
