@@ -2,7 +2,7 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Plataforma (web + API):** `2.0.0` · **CLI npm:** `2.0.0` (publicar con `npm publish`)
+**Plataforma (web + API):** `2.0.0` · **CLI npm:** `2.0.0`
 
 ```
 localhost:88080  →  CLI Node (WebSocket)  →  API gateway (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
