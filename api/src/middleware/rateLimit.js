@@ -28,6 +28,8 @@ export const forgotPasswordLimiter = rateLimit({
   handler: jsonHandler,
 });
 
+export const resendVerificationLimiter = forgotPasswordLimiter;
+
 export const tunnelCreateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,

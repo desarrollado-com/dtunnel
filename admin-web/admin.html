@@ -55,6 +55,7 @@
               <th>Email</th>
               <th>Plan</th>
               <th>Estado</th>
+              <th>Verificado</th>
               <th>Túneles</th>
               <th>Subdominios</th>
               <th>Admin</th>
@@ -168,6 +169,8 @@
             <option value="tunnel.close">tunnel.close</option>
             <option value="tunnel.close_anon_ip">tunnel.close_anon_ip</option>
             <option value="user.suspend">user.suspend</option>
+            <option value="user.send_activation">user.send_activation</option>
+            <option value="user.send_password_reset">user.send_password_reset</option>
             <option value="user.update">user.update</option>
             <option value="user.delete">user.delete</option>
             <option value="settings.update">settings.update</option>
@@ -243,6 +246,7 @@
         <input type="number" id="edit-user-subdomain-override" min="0" placeholder="—">
       </div>
       <label class="admin-check"><input type="checkbox" id="edit-user-active"> Cuenta activa</label>
+      <label class="admin-check"><input type="checkbox" id="edit-user-verified"> Email verificado</label>
       <label class="admin-check"><input type="checkbox" id="edit-user-admin"> Administrador</label>
       <p id="user-form-msg" class="form-error" hidden></p>
       <div class="dialog-actions">

@@ -65,6 +65,15 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
   CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -103,6 +112,17 @@ migrateColumn('users', 'tunnel_limit_override', 'INTEGER');
 migrateColumn('users', 'reserved_subdomain_limit_override', 'INTEGER');
 migrateColumn('active_tunnels', 'client_ip', 'TEXT');
 migrateColumn('active_tunnels', 'last_heartbeat', 'TEXT');
+migrateColumn('users', 'email_verified', 'INTEGER NOT NULL DEFAULT 0');
+const emailVerificationMigrated = db.prepare(
+  "SELECT value FROM settings WHERE key = 'email_verification_migrated'",
+).get();
+if (!emailVerificationMigrated) {
+  db.prepare('UPDATE users SET email_verified = 1').run();
+  db.prepare(`
+    INSERT INTO settings (key, value, updated_at) VALUES ('email_verification_migrated', '1', datetime('now'))
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+  `).run();
+}
 
 const DEFAULT_PLANS = [
   {
@@ -149,7 +169,7 @@ seedPlans();
 export function syncAdminUsers(adminEmails = []) {
   db.prepare('UPDATE users SET is_admin = 0').run();
   if (!adminEmails.length) return;
-  const stmt = db.prepare('UPDATE users SET is_admin = 1 WHERE email = ?');
+  const stmt = db.prepare('UPDATE users SET is_admin = 1, email_verified = 1 WHERE email = ?');
   for (const email of adminEmails) {
     stmt.run(email.toLowerCase().trim());
   }
@@ -339,6 +359,37 @@ export function consumePasswordResetToken(rawToken) {
   db.prepare('DELETE FROM password_reset_tokens WHERE token_hash = ?').run(hash);
 }
 
+export function createEmailVerificationToken(userId) {
+  const raw = randomBytes(32).toString('hex');
+  const hash = createHash('sha256').update(raw).digest('hex');
+  db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(userId);
+  db.prepare(`
+    INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
+    VALUES (?, ?, datetime('now', '+48 hours'))
+  `).run(userId, hash);
+  return raw;
+}
+
+export function findUserByVerificationToken(rawToken) {
+  const hash = createHash('sha256').update(String(rawToken)).digest('hex');
+  return db.prepare(`
+    SELECT t.user_id, u.email
+    FROM email_verification_tokens t
+    JOIN users u ON u.id = t.user_id
+    WHERE t.token_hash = ? AND t.expires_at > datetime('now')
+  `).get(hash);
+}
+
+export function consumeEmailVerificationToken(rawToken) {
+  const hash = createHash('sha256').update(String(rawToken)).digest('hex');
+  db.prepare('DELETE FROM email_verification_tokens WHERE token_hash = ?').run(hash);
+}
+
+export function markEmailVerified(userId) {
+  db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(userId);
+  db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(userId);
+}
+
 export function updateUserPassword(userId, password) {
   const hash = bcrypt.hashSync(password, 10);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
@@ -433,7 +484,7 @@ export function subdomainTaken(subdomain) {
 export function listUsers() {
   return db.prepare(`
     SELECT
-      u.id, u.email, u.plan, u.is_admin, u.active,
+      u.id, u.email, u.plan, u.is_admin, u.active, u.email_verified,
       u.tunnel_limit_override, u.reserved_subdomain_limit_override, u.created_at,
       (SELECT COUNT(*) FROM reserved_subdomains rs WHERE rs.user_id = u.id) AS reserved_count,
       (SELECT COUNT(*) FROM active_tunnels at WHERE at.user_id = u.id) AS active_tunnel_count
@@ -449,6 +500,9 @@ export function updateUser(id, data) {
     plan: data.plan ?? user.plan,
     is_admin: data.is_admin != null ? (data.is_admin ? 1 : 0) : user.is_admin,
     active: data.active != null ? (data.active ? 1 : 0) : user.active,
+    email_verified: data.email_verified != null
+      ? (data.email_verified ? 1 : 0)
+      : user.email_verified,
     tunnel_limit_override: data.tunnel_limit_override === null
       ? null
       : (data.tunnel_limit_override != null ? Number(data.tunnel_limit_override) : user.tunnel_limit_override),
@@ -464,6 +518,7 @@ export function updateUser(id, data) {
       plan = @plan,
       is_admin = @is_admin,
       active = @active,
+      email_verified = @email_verified,
       tunnel_limit_override = @tunnel_limit_override,
       reserved_subdomain_limit_override = @reserved_subdomain_limit_override
     WHERE id = @id
@@ -556,6 +611,7 @@ export function publicUser(user) {
     planName: limits.planName,
     isAdmin: Boolean(user.is_admin),
     active: Boolean(user.active),
+    emailVerified: Boolean(user.email_verified),
     tunnelLimit: limits.tunnelLimit,
     reservedSubdomainLimit: limits.reservedSubdomainLimit,
     customSubdomain: limits.customSubdomain,
@@ -603,6 +659,7 @@ export function deleteUser(id) {
   releaseAllUserTunnels(id);
   db.prepare('DELETE FROM reserved_subdomains WHERE user_id = ?').run(id);
   db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(id);
+  db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(id);
   db.prepare('DELETE FROM users WHERE id = ?').run(id);
   return user;
 }

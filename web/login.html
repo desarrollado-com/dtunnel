@@ -51,6 +51,11 @@
           }),
         });
         const data = await res.json();
+        if (res.status === 403 && data.code === 'EMAIL_NOT_VERIFIED') {
+          sessionStorage.setItem('dtunnel_pending_email', document.getElementById('email').value);
+          window.location.href = '/verify-pending.html';
+          return;
+        }
         if (!res.ok) throw new Error(data.error || 'Error');
         localStorage.setItem('dtunnel_token', data.token);
         localStorage.setItem('dtunnel_email', data.email);

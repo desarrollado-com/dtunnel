@@ -5,6 +5,36 @@ Todos los cambios notables de dtunnel se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.1.0] - 2026-07-30
+
+### Añadido
+
+- Verificación de email en registro (`POST /auth/verify-email`, `verify-email.html`).
+- Reenvío de activación (`POST /auth/resend-verification`, `verify-pending.html`).
+- Admin: botones reenviar activación y recuperar contraseña por usuario.
+- Página 503 para subdominios inactivos (reservado / offline / disponible).
+- Vista admin de túneles anónimos agrupados por IP.
+- Logs de auditoría en panel admin.
+
+### Cambiado
+
+- Login y rutas autenticadas requieren email verificado (admins exentos).
+- API version `2.1.0`; transporte nativo en producción.
+
+## [2.0.2] - 2026-07-30
+
+### Añadido (CLI)
+
+- `--host` / `-H` y `DTUNNEL_LOCAL_HOST` para tunelar a hostnames Docker.
+- `dtunnel config` y `config set localHost`.
+
+## [2.0.1] - 2026-07-30
+
+### Corregido (CLI)
+
+- Sin crash de Node al fallar comandos en Windows.
+- Reemplazo automático de túnel huérfano propio al reabrir subdominio reservado.
+
 ## [2.0.0] - 2026-07-30
 
 ### Añadido

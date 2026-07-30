@@ -36,6 +36,41 @@
     <p class="lead">Historial de versiones del CLI, instalador curl, web y API.
       También en <a href="https://github.com/desarrollado-com/dtunnel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">GitHub</a>.</p>
 
+    <article class="changelog-entry" id="v2-1-0">
+      <header class="changelog-header">
+        <h2><a href="#v2-1-0">2.1.0</a></h2>
+        <time datetime="2026-07-30">30 jul 2026</time>
+      </header>
+      <ul class="docs-list">
+        <li><strong>Verificación de email</strong> — activación al registrarse, <code>verify-email.html</code> y reenvío en <code>verify-pending.html</code>.</li>
+        <li>Admin: reenviar activación y recuperar contraseña por usuario; columna «Verificado».</li>
+        <li>Logs de auditoría, túneles anónimos por IP, página 503 en subdominios inactivos.</li>
+        <li>API v2.1.0 con transporte nativo en producción.</li>
+      </ul>
+    </article>
+
+    <article class="changelog-entry" id="v2-0-2">
+      <header class="changelog-header">
+        <h2><a href="#v2-0-2">2.0.2</a> <span class="text-muted">(CLI)</span></h2>
+        <time datetime="2026-07-30">30 jul 2026</time>
+      </header>
+      <ul class="docs-list">
+        <li><code>--host</code> / <code>DTUNNEL_LOCAL_HOST</code> para Docker (<code>mi-proyecto:3000</code>).</li>
+        <li><code>dtunnel config set localHost</code> — configuración persistente.</li>
+      </ul>
+    </article>
+
+    <article class="changelog-entry" id="v2-0-1">
+      <header class="changelog-header">
+        <h2><a href="#v2-0-1">2.0.1</a> <span class="text-muted">(CLI)</span></h2>
+        <time datetime="2026-07-30">30 jul 2026</time>
+      </header>
+      <ul class="docs-list">
+        <li>Corrección de crash en Windows/Node 24 al fallar comandos.</li>
+        <li>Reemplazo de túnel huérfano propio al reabrir subdominio reservado.</li>
+      </ul>
+    </article>
+
     <article class="changelog-entry" id="v2-0-0">
       <header class="changelog-header">
         <h2><a href="#v2-0-0">2.0.0</a></h2>

@@ -25,8 +25,8 @@ function filterHeaders(headers) {
   return out;
 }
 
-async function forwardToLocal({ method, path, headers, body }, localPort) {
-  const url = `http://127.0.0.1:${localPort}${path}`;
+async function forwardToLocal({ method, path, headers, body }, localHost, localPort) {
+  const url = `http://${localHost}:${localPort}${path}`;
   const init = {
     method: method || 'GET',
     headers: filterHeaders(headers),
@@ -43,7 +43,7 @@ async function forwardToLocal({ method, path, headers, body }, localPort) {
   };
 }
 
-export function startNativeTunnel({ wsUrl, tunnelToken, localPort, onReady, onClose, onError }) {
+export function startNativeTunnel({ wsUrl, tunnelToken, localHost = '127.0.0.1', localPort, onReady, onClose, onError }) {
   const url = `${wsUrl}${wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(tunnelToken)}`;
   const ws = new WebSocket(url);
 
@@ -65,7 +65,7 @@ export function startNativeTunnel({ wsUrl, tunnelToken, localPort, onReady, onCl
     }
     if (msg.type !== 'req' || !msg.id) return;
     try {
-      const response = await forwardToLocal(msg, localPort);
+      const response = await forwardToLocal(msg, localHost, localPort);
       send(ws, { type: 'res', id: msg.id, ...response });
     } catch (err) {
       send(ws, {
@@ -95,7 +95,7 @@ export function startNativeTunnel({ wsUrl, tunnelToken, localPort, onReady, onCl
 }
 
 /** Proceso detached: mantiene el túnel abierto en segundo plano */
-export function runNativeTunnelDaemon({ wsUrl, tunnelToken, localPort, subdomain }) {
+export function runNativeTunnelDaemon({ wsUrl, tunnelToken, localHost = '127.0.0.1', localPort, subdomain }) {
   const keepAlive = createServer((_req, res) => {
     res.writeHead(200);
     res.end('ok');
@@ -105,6 +105,7 @@ export function runNativeTunnelDaemon({ wsUrl, tunnelToken, localPort, subdomain
   const tunnel = startNativeTunnel({
     wsUrl,
     tunnelToken,
+    localHost,
     localPort,
     onClose: () => process.exit(0),
     onError: () => process.exit(1),
@@ -116,7 +117,7 @@ export function runNativeTunnelDaemon({ wsUrl, tunnelToken, localPort, subdomain
     process.exit(0);
   });
 
-  console.log(JSON.stringify({ ok: true, subdomain, localPort }));
+  console.log(JSON.stringify({ ok: true, subdomain, localHost, localPort }));
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
@@ -129,12 +130,13 @@ if (isMain) {
     }, []),
   );
   if (!args['ws-url'] || !args.token || !args.port) {
-    console.error('Uso: native-client.js --ws-url <url> --token <jwt> --port <localPort>');
+    console.error('Uso: native-client.js --ws-url <url> --token <jwt> --port <localPort> [--host <localHost>]');
     process.exit(1);
   }
   runNativeTunnelDaemon({
     wsUrl: args['ws-url'],
     tunnelToken: args.token,
+    localHost: args.host || '127.0.0.1',
     localPort: Number(args.port),
     subdomain: args.subdomain,
   });

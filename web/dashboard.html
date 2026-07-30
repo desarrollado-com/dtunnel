@@ -155,8 +155,13 @@ dtunnel down                        # al terminar (la reserva sigue)</code></pre
 
     async function loadMe() {
       const res = await fetch('/api/me', { headers });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 403 && data.code === 'EMAIL_NOT_VERIFIED') {
+        sessionStorage.setItem('dtunnel_pending_email', data.email || localStorage.getItem('dtunnel_email') || '');
+        window.location.href = '/verify-pending.html';
+        return;
+      }
       if (!res.ok) { window.location.href = '/login.html'; return; }
-      const data = await res.json();
       document.getElementById('email').textContent = data.email;
       document.getElementById('plan-info').textContent =
         `Plan: ${data.planName || data.plan} · Túneles simultáneos: ${data.limits?.tunnelLimit ?? '—'} · Nombres reservables: ${data.limits?.reservedSubdomainLimit ?? '—'}`;

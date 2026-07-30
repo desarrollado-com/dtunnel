@@ -9,6 +9,6 @@ auth.token = "TU_FRPS_TOKEN"
 [[proxies]]
 name = "NAME"
 type = "http"
-localIP = "127.0.0.1"
+localIP = "127.0.0.1"   # o nombre de servicio Docker: "mi-proyecto"
 localPort = PORT
 subdomain = "NAME"

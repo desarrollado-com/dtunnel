@@ -34,6 +34,18 @@ function readPid() {
 
 const DEFAULT_API = 'https://dtunnel.desarrollado.com/api';
 const DEFAULT_DOMAIN = 'dtunnel.desarrollado.com';
+const DEFAULT_LOCAL_HOST = '127.0.0.1';
+
+function resolveLocalHost(args, cfg = loadConfig()) {
+  return process.env.DTUNNEL_LOCAL_HOST || args.host || cfg.localHost || DEFAULT_LOCAL_HOST;
+}
+
+function formatLocalTarget(host, port) {
+  if (host.includes(':') && !host.startsWith('[')) {
+    return `[${host}]:${port}`;
+  }
+  return `${host}:${port}`;
+}
 
 function loadConfig() {
   if (!existsSync(CONFIG_FILE)) return {};
@@ -149,11 +161,12 @@ async function releaseStaleTunnel() {
 }
 
 function parseArgs(argv) {
-  const args = { port: null, subdomain: null, cmd: 'up', listWhat: null, frp: false };
+  const args = { port: null, subdomain: null, host: null, cmd: 'up', listWhat: null, frp: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--port' || a === '-p') args.port = Number(argv[++i]);
     else if (a === '--subdomain' || a === '-s') args.subdomain = argv[++i];
+    else if (a === '--host' || a === '-H') args.host = argv[++i];
     else if (a === '--frp' || a === '--legacy') args.frp = true;
     else if (a === '--list') { args.cmd = 'list'; args.listWhat = argv[++i]; }
     else if (a === 'login') args.cmd = 'login';
@@ -163,6 +176,7 @@ function parseArgs(argv) {
     else if (a === 'version' || a === '-v' || a === '--version') args.cmd = 'version';
     else if (a === 'list') { args.cmd = 'list'; args.listWhat = argv[++i] || 'up'; }
     else if (a === 'reserve') { args.cmd = 'reserve'; args.subdomain = argv[++i]; }
+    else if (a === 'config') args.cmd = 'config';
     else if (a === 'install-frpc') args.cmd = 'install-frpc';
     else if (a === '--help' || a === '-h' || a === 'help') args.cmd = 'help';
     else if (!a.startsWith('-') && !args.port) args.port = Number(a);
@@ -176,12 +190,15 @@ dtunnel — URL pública para tu servidor local
 
   dtunnel --port <puerto>              Túnel con subdominio aleatorio
   dtunnel --port <puerto> -s <nombre>  Túnel con subdominio reservado
+  dtunnel --port 3000 --host mi-proyecto   Destino Docker / hostname local
   dtunnel status                       Estado del túnel local
   dtunnel --list up                    Listar túneles activos
   dtunnel version                      Versión instalada
   dtunnel login                        Iniciar sesión
   dtunnel register                     Crear cuenta
   dtunnel reserve <nombre>             Reservar subdominio (requiere login)
+  dtunnel config                       Ver configuración local
+  dtunnel config set localHost <host>  Host por defecto (p. ej. mi-proyecto)
   dtunnel down                         Detener túnel
   dtunnel install-frpc                 Descargar frpc (modo legacy --frp)
 
@@ -189,8 +206,34 @@ Modo por defecto: túnel nativo v2 (solo Node.js, sin frpc).
   dtunnel --frp --port <puerto>        Forzar modo legacy con frpc
 
 Variables:
-  DTUNNEL_API_URL   ${DEFAULT_API}
+  DTUNNEL_API_URL     ${DEFAULT_API}
+  DTUNNEL_LOCAL_HOST  ${DEFAULT_LOCAL_HOST} (o nombre Docker, p. ej. mi-proyecto)
+
+Archivo ~/.dtunnel/config.json:
+  localHost, apiUrl, token, email
 `);
+}
+
+function cmdConfig(argv) {
+  const sub = argv[3];
+  const cfg = loadConfig();
+  if (sub === 'set' && argv[4] && argv[5] !== undefined) {
+    const key = argv[4];
+    const value = argv[5];
+    if (!['localHost', 'apiUrl'].includes(key)) {
+      console.error('Claves permitidas: localHost, apiUrl');
+      return 1;
+    }
+    cfg[key] = value;
+    saveConfig(cfg);
+    console.log(`OK: ${key} = ${value}`);
+    return 0;
+  }
+  const display = { ...cfg };
+  if (display.token) display.token = '***';
+  if (!display.localHost) display.localHost = DEFAULT_LOCAL_HOST;
+  console.log(JSON.stringify(display, null, 2));
+  return 0;
 }
 
 function findFrpc() {
@@ -209,7 +252,11 @@ async function apiFetch(path, options = {}) {
   if (cfg.token) headers.Authorization = `Bearer ${cfg.token}`;
   const res = await fetch(`${base}${path}`, { ...options, headers });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(body.error || `HTTP ${res.status}`);
+    if (body.code) err.code = body.code;
+    throw err;
+  }
   return body;
 }
 
@@ -224,15 +271,24 @@ async function prompt(question) {
 async function cmdLogin() {
   const email = await prompt('Email: ');
   const password = await prompt('Contraseña: ');
-  const data = await apiFetch('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-  const cfg = loadConfig();
-  cfg.token = data.token;
-  cfg.email = data.email;
-  saveConfig(cfg);
-  console.log(`Sesión iniciada como ${data.email}`);
+  try {
+    const data = await apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    const cfg = loadConfig();
+    cfg.token = data.token;
+    cfg.email = data.email;
+    saveConfig(cfg);
+    console.log(`Sesión iniciada como ${data.email}`);
+  } catch (err) {
+    if (err.code === 'EMAIL_NOT_VERIFIED') {
+      console.error('Debes verificar tu email antes de iniciar sesión.');
+      console.error('Revisa tu bandeja de entrada o visita: https://dtunnel.desarrollado.com/verify-pending.html');
+      return 1;
+    }
+    throw err;
+  }
 }
 
 async function cmdRegister() {
@@ -242,11 +298,17 @@ async function cmdRegister() {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
+  if (!data.emailVerified) {
+    console.log(`Cuenta creada: ${data.email}`);
+    console.log('Revisa tu email para activar la cuenta antes de usar dtunnel login.');
+    console.log('Reenvío: https://dtunnel.desarrollado.com/verify-pending.html');
+    return 0;
+  }
   const cfg = loadConfig();
   cfg.token = data.token;
   cfg.email = data.email;
   saveConfig(cfg);
-  console.log(`Cuenta creada: ${data.email}`);
+  console.log(`Cuenta creada y verificada: ${data.email}`);
 }
 
 async function cmdReserve(name) {
@@ -258,7 +320,7 @@ async function cmdReserve(name) {
   console.log(`Reservado: ${data.url}`);
 }
 
-function writeFrpcToml({ server, serverPort, token, subdomain, port }) {
+function writeFrpcToml({ server, serverPort, token, subdomain, port, localIP = DEFAULT_LOCAL_HOST }) {
   const escaped = token.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const content = `serverAddr = "${server}"
 serverPort = ${serverPort}
@@ -269,7 +331,7 @@ auth.token = "${escaped}"
 [[proxies]]
 name = "${subdomain}"
 type = "http"
-localIP = "127.0.0.1"
+localIP = "${localIP}"
 localPort = ${port}
 subdomain = "${subdomain}"
 `;
@@ -278,11 +340,14 @@ subdomain = "${subdomain}"
 }
 
 async function cmdUpNative(data, args) {
+  const localHost = resolveLocalHost(args);
+  const target = formatLocalTarget(localHost, args.port);
   const script = join(__dirname, 'native-client.js');
   const child = spawn(process.execPath, [
     script,
     '--ws-url', data.wsUrl,
     '--token', data.tunnelToken,
+    '--host', localHost,
     '--port', String(args.port),
     '--subdomain', data.subdomain,
   ], { stdio: 'ignore', detached: true });
@@ -294,6 +359,7 @@ async function cmdUpNative(data, args) {
     tunnelId: data.tunnelId,
     subdomain: data.subdomain,
     port: args.port,
+    localHost,
     httpUrl: data.httpUrl,
     httpsUrl: data.httpsUrl,
     host: data.host || `${data.subdomain}.${DEFAULT_DOMAIN}`,
@@ -301,13 +367,15 @@ async function cmdUpNative(data, args) {
   });
   startHeartbeat();
   console.log('');
-  console.log(`${data.httpUrl}  ⟶  http://localhost:${args.port}`);
-  console.log(`${data.httpsUrl}  ⟶  http://localhost:${args.port}`);
+  console.log(`${data.httpUrl}  ⟶  http://${target}`);
+  console.log(`${data.httpsUrl}  ⟶  http://${target}`);
   console.log('');
   console.log('Túnel nativo v2 (sin frpc). Ctrl+C no detiene el túnel. Usa: dtunnel down');
 }
 
 async function cmdUpFrp(data, args) {
+  const localHost = resolveLocalHost(args);
+  const target = formatLocalTarget(localHost, args.port);
   const frpc = await ensureFrpcBinary();
   if (!frpc) {
     console.error('No se pudo instalar frpc. Ejecuta: dtunnel install-frpc');
@@ -320,6 +388,7 @@ async function cmdUpFrp(data, args) {
     token: data.token,
     subdomain: data.subdomain,
     port: args.port,
+    localIP: localHost,
   });
 
   const child = spawn(frpc, ['-c', FRPC_CONF], { stdio: 'ignore', detached: true });
@@ -331,6 +400,7 @@ async function cmdUpFrp(data, args) {
     tunnelId: data.tunnelId,
     subdomain: data.subdomain,
     port: args.port,
+    localHost,
     httpUrl: data.httpUrl,
     httpsUrl: data.httpsUrl,
     host: data.host || `${data.subdomain}.${DEFAULT_DOMAIN}`,
@@ -339,8 +409,8 @@ async function cmdUpFrp(data, args) {
   startHeartbeat();
 
   console.log('');
-  console.log(`${data.httpUrl}  ⟶  http://localhost:${args.port}`);
-  console.log(`${data.httpsUrl}  ⟶  http://localhost:${args.port}`);
+  console.log(`${data.httpUrl}  ⟶  http://${target}`);
+  console.log(`${data.httpsUrl}  ⟶  http://${target}`);
   console.log('');
   console.log('Modo legacy (frpc). Ctrl+C no detiene el túnel. Usa: dtunnel down');
 }
@@ -460,7 +530,7 @@ function cmdStatus() {
   console.log('Túnel activo');
   console.log(`  Subdominio: ${local.subdomain}`);
   console.log(`  Host:       ${local.host || `${local.subdomain}.${DEFAULT_DOMAIN}`}`);
-  console.log(`  Puerto:     localhost:${local.port}`);
+  console.log(`  Destino:    http://${formatLocalTarget(local.localHost || DEFAULT_LOCAL_HOST, local.port)}`);
   if (local.httpUrl) console.log(`  HTTP:       ${local.httpUrl}`);
   if (local.httpsUrl) console.log(`  HTTPS:      ${local.httpsUrl}`);
   console.log(`  Modo:       ${local.mode || 'frp'}`);
@@ -471,6 +541,11 @@ function cmdStatus() {
 
 function cmdVersion() {
   console.log(`dtunnel ${VERSION} (@desarrollado/dtunnel)`);
+}
+
+function formatTunnelTarget(t) {
+  const host = t.localHost || DEFAULT_LOCAL_HOST;
+  return formatLocalTarget(host, t.port);
 }
 
 async function cmdList(what) {
@@ -496,7 +571,7 @@ async function cmdList(what) {
     const stale = getStaleTunnelState();
     if (stale?.subdomain) {
       console.log('HUÉRFANO (local sin proceso, aún en servidor)');
-      console.log(`  ${stale.subdomain.padEnd(16)} localhost:${stale.port}  (ejecuta: dtunnel down)`);
+      console.log(`  ${stale.subdomain.padEnd(16)} ${formatTunnelTarget(stale)}  (ejecuta: dtunnel down)`);
       return;
     }
     console.log('No hay túneles activos.');
@@ -506,14 +581,14 @@ async function cmdList(what) {
 
   if (local) {
     console.log('LOCAL');
-    console.log(`  ${local.subdomain.padEnd(16)} localhost:${local.port}  ${local.httpsUrl || ''}`);
+    console.log(`  ${local.subdomain.padEnd(16)} ${formatTunnelTarget(local)}  ${local.httpsUrl || ''}`);
   }
 
   if (remote.length > 0) {
     console.log(local ? '\nCUENTA' : 'CUENTA');
     for (const t of remote) {
       const marker = local?.subdomain === t.subdomain ? '*' : ' ';
-      console.log(`${marker} ${t.subdomain.padEnd(16)} localhost:${t.port}  ${t.httpsUrl}`);
+      console.log(`${marker} ${t.subdomain.padEnd(16)} ${formatLocalTarget(DEFAULT_LOCAL_HOST, t.port)}  ${t.httpsUrl}`);
     }
     if (local) {
       console.log('\n* = también activo en esta máquina');
@@ -532,6 +607,11 @@ async function main() {
       case 'register': await cmdRegister(); break;
       case 'reserve': {
         const rc = await cmdReserve(args.subdomain);
+        if (rc) return rc;
+        break;
+      }
+      case 'config': {
+        const rc = cmdConfig(process.argv);
         if (rc) return rc;
         break;
       }

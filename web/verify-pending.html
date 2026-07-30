@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verifica tu email — dtunnel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="top-app-bar">
+    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel</a>
+  </header>
+  <main class="auth-page">
+    <h1>Verifica tu email</h1>
+    <p class="text-muted" id="intro">
+      Te enviamos un enlace de activación. Revisa tu bandeja de entrada y spam.
+    </p>
+    <p id="email-display" class="text-muted" style="font-size:0.95rem;margin-bottom:1rem"></p>
+    <form id="resend-form" class="auth-form">
+      <md-outlined-text-field id="email" type="email" label="Email" required></md-outlined-text-field>
+      <p id="msg" class="form-error" hidden></p>
+      <p id="ok" class="form-success" hidden></p>
+      <button type="submit" class="btn btn-primary btn-block">Reenviar correo de activación</button>
+    </form>
+    <p class="text-muted" style="margin-top:1rem;font-size:0.9rem">
+      ¿Ya activaste? <a href="/login.html">Iniciar sesión</a>
+    </p>
+  </main>
+  <footer class="footer" data-site-footer></footer>
+  <script src="/js/site-footer.js"></script>
+  <script type="importmap">{"imports":{"@material/web/":"https://esm.run/@material/web/"}}</script>
+  <script type="module" src="/js/m3.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const stored = sessionStorage.getItem('dtunnel_pending_email');
+    const email = params.get('email') || stored || '';
+    const emailField = document.getElementById('email');
+    if (email) {
+      emailField.value = email;
+      document.getElementById('email-display').textContent = `Cuenta: ${email}`;
+    }
+
+    document.getElementById('resend-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      const ok = document.getElementById('ok');
+      msg.hidden = true;
+      ok.hidden = true;
+      const value = emailField.value.trim();
+      try {
+        const res = await fetch('/api/auth/resend-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: value }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error');
+        sessionStorage.setItem('dtunnel_pending_email', value);
+        ok.textContent = data.message || 'Si el email existe y no está verificado, recibirás un enlace.';
+        ok.hidden = false;
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.hidden = false;
+      }
+    });
+  </script>
+  <script src="/js/theme.js"></script>
+</body>
+</html>

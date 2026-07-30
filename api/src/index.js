@@ -11,6 +11,10 @@ import {
   findUserByResetToken,
   consumePasswordResetToken,
   createPasswordResetToken,
+  createEmailVerificationToken,
+  findUserByVerificationToken,
+  consumeEmailVerificationToken,
+  markEmailVerified,
   updateUserPassword,
   verifyPassword,
   releaseSubdomain,
@@ -40,8 +44,8 @@ import {
 import { appendAuditLog } from './audit.js';
 import { createAdminRouter } from './routes/admin.js';
 import { getClientIp } from './middleware/clientIp.js';
-import { registerLimiter, loginLimiter, tunnelCreateLimiter, forgotPasswordLimiter } from './middleware/rateLimit.js';
-import { sendPasswordResetEmail } from './mail.js';
+import { registerLimiter, loginLimiter, tunnelCreateLimiter, forgotPasswordLimiter, resendVerificationLimiter } from './middleware/rateLimit.js';
+import { sendPasswordResetEmail, sendActivationEmail } from './mail.js';
 import {
   createTunnelAccessToken,
   startNativeTunnelServer,
@@ -117,6 +121,15 @@ function authRequired(req, res, next) {
   authOptional(req, res, () => {
     if (!req.user || !req.dbUser) return res.status(401).json({ error: 'No autenticado' });
     if (!req.dbUser.active) return res.status(403).json({ error: 'Cuenta desactivada' });
+    const isAdmin = Boolean(req.dbUser.is_admin)
+      || ADMIN_EMAILS.includes(String(req.user.email || '').toLowerCase());
+    if (!req.dbUser.email_verified && !isAdmin) {
+      return res.status(403).json({
+        error: 'Debes verificar tu email antes de continuar',
+        code: 'EMAIL_NOT_VERIFIED',
+        email: req.user.email,
+      });
+    }
     next();
   });
 }
@@ -173,7 +186,7 @@ app.get('/plans', (_req, res) => {
   res.json({ plans: listPlans().map(publicPlan) });
 });
 
-app.post('/auth/register', registerLimiter, (req, res) => {
+app.post('/auth/register', registerLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password || password.length < 8) {
     return res.status(400).json({ error: 'Email y contraseña (mín. 8 caracteres) requeridos' });
@@ -183,7 +196,23 @@ app.post('/auth/register', registerLimiter, (req, res) => {
     syncAdminUsers(ADMIN_EMAILS);
     const user = findUserById(result.lastInsertRowid);
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
-    res.status(201).json({ token, email: user.email, isAdmin: Boolean(user.is_admin) });
+    if (!user.email_verified) {
+      try {
+        const verifyToken = createEmailVerificationToken(user.id);
+        await sendActivationEmail({
+          to: user.email,
+          verifyUrl: `${APP_URL}/verify-email.html?token=${verifyToken}`,
+        });
+      } catch (err) {
+        console.error('Error enviando email de activación:', err.message);
+      }
+    }
+    res.status(201).json({
+      token,
+      email: user.email,
+      isAdmin: Boolean(user.is_admin),
+      emailVerified: Boolean(user.email_verified),
+    });
   } catch (e) {
     if (String(e.message).includes('UNIQUE')) {
       return res.status(409).json({ error: 'Email ya registrado' });
@@ -201,11 +230,20 @@ app.post('/auth/login', loginLimiter, (req, res) => {
   if (!user.active) {
     return res.status(403).json({ error: 'Cuenta desactivada' });
   }
+  const isAdmin = Boolean(user.is_admin) || ADMIN_EMAILS.includes(user.email.toLowerCase());
+  if (!user.email_verified && !isAdmin) {
+    return res.status(403).json({
+      error: 'Debes verificar tu email antes de iniciar sesión',
+      code: 'EMAIL_NOT_VERIFIED',
+      email: user.email,
+    });
+  }
   const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
   res.json({
     token,
     email: user.email,
-    isAdmin: Boolean(user.is_admin) || ADMIN_EMAILS.includes(user.email.toLowerCase()),
+    isAdmin,
+    emailVerified: Boolean(user.email_verified),
   });
 });
 
@@ -229,6 +267,29 @@ app.post('/auth/forgot-password', forgotPasswordLimiter, async (req, res) => {
   res.json({ ok: true, message: 'Si el email existe, recibirás un enlace de recuperación.' });
 });
 
+app.post('/auth/resend-verification', resendVerificationLimiter, async (req, res) => {
+  const email = req.body?.email;
+  if (!email) {
+    return res.status(400).json({ error: 'Email requerido' });
+  }
+  const user = findUserByEmail(email);
+  if (user?.active && !user.email_verified) {
+    try {
+      const token = createEmailVerificationToken(user.id);
+      await sendActivationEmail({
+        to: user.email,
+        verifyUrl: `${APP_URL}/verify-email.html?token=${token}`,
+      });
+    } catch (err) {
+      console.error('Error reenviando email de activación:', err.message);
+    }
+  }
+  res.json({
+    ok: true,
+    message: 'Si el email existe y no está verificado, recibirás un enlace de activación.',
+  });
+});
+
 app.post('/auth/reset-password', async (req, res) => {
   const { token, password } = req.body || {};
   if (!token || !password || password.length < 8) {
@@ -241,6 +302,20 @@ app.post('/auth/reset-password', async (req, res) => {
   updateUserPassword(row.user_id, password);
   consumePasswordResetToken(token);
   res.json({ ok: true });
+});
+
+app.post('/auth/verify-email', async (req, res) => {
+  const { token } = req.body || {};
+  if (!token) {
+    return res.status(400).json({ error: 'Token requerido' });
+  }
+  const row = findUserByVerificationToken(token);
+  if (!row) {
+    return res.status(400).json({ error: 'Enlace inválido o expirado' });
+  }
+  markEmailVerified(row.user_id);
+  consumeEmailVerificationToken(token);
+  res.json({ ok: true, email: row.email });
 });
 
 app.post('/auth/change-password', authRequired, loginLimiter, (req, res) => {

@@ -21,27 +21,28 @@ Servicio self-hosted tipo [Tunnelmole](https://github.com/robbie-cahill/tunnelmo
 |---------|-----|
 | Sitio | https://dtunnel.desarrollado.com |
 | Instalador | https://install.desarrollado.com/dtunnel/install |
-| npm | https://www.npmjs.com/package/@desarrollado/dtunnel | CLI v1.0.6 |
-| Changelog | https://dtunnel.desarrollado.com/changelog.html | Plataforma v1.0.7 |
+| npm | https://www.npmjs.com/package/@desarrollado/dtunnel | CLI v2.0.3 |
+| Changelog | https://dtunnel.desarrollado.com/changelog.html | API v2.1.0 |
 | Admin | https://dtunnel-admin.desarrollado.com | Panel superadmin |
 | Estado | https://dtunnel.desarrollado.com/status.html | Monitorización pública |
 | GitHub | https://github.com/desarrollado-com/dtunnel | |
 
-## Arquitectura
+## Arquitectura (v2)
 
 ```
 Internet → Nginx (Hestia, TLS)
-              ├─ dtunnel.desarrollado.com → public_html + /api → API Node
+              ├─ dtunnel.desarrollado.com → public_html + /api → API Node :3001
               ├─ dtunnel-admin.desarrollado.com → admin-web (estático)
-              └─ *.dtunnel → frps :18080 ← frpc ← localhost:PORT
+              └─ *.dtunnel → gateway nativo :18080 ← WebSocket ← CLI Node
 ```
 
 | Capa | Tecnología |
 |------|------------|
-| Broker | frp (`frps` / `frpc`) |
+| Túnel | Node.js nativo (WebSocket + gateway HTTP) |
+| Legacy | frp (`frps` / `frpc`) opcional con `--frp` |
 | Edge TLS | Hestia + Let's Encrypt |
 | API | Node.js + SQLite + nodemailer (SMTP) |
-| CLI | Node.js (`@desarrollado/dtunnel`) + bash (instalador curl) |
+| CLI | `@desarrollado/dtunnel` + instalador curl |
 | Web | HTML/CSS estático + Material Design 3 |
 
 ## Experiencia de usuario
@@ -52,7 +53,7 @@ Internet → Nginx (Hestia, TLS)
 dtunnel --port 88080
 ```
 
-→ `https://q9iga6.dtunnel.desarrollado.com` (subdominio aleatorio, 1 túnel por IP, sin reserva).
+→ `https://q9iga6.dtunnel.desarrollado.com` (subdominio aleatorio, 1 túnel por IP).
 
 ### Registrado
 
@@ -64,7 +65,19 @@ dtunnel --port 88080 --subdomain mi-api
 
 → URL persistente `https://mi-api.dtunnel.desarrollado.com`.
 
-Recuperación de contraseña: [forgot-password.html](https://dtunnel.desarrollado.com/forgot-password.html).
+### Docker / hostname local
+
+```bash
+dtunnel config set localHost mi-proyecto
+dtunnel --port 3000
+```
+
+Ver [docker-compose.example.md](docker-compose.example.md).
+
+### Cuenta
+
+- Registro con **verificación de email** (`verify-email.html`, reenvío en `verify-pending.html`).
+- Recuperación de contraseña: [forgot-password.html](https://dtunnel.desarrollado.com/forgot-password.html).
 
 ## Roadmap
 
@@ -76,25 +89,23 @@ Recuperación de contraseña: [forgot-password.html](https://dtunnel.desarrollad
 | 3 | API auth + subdominios reservados | Hecho |
 | 4 | Instalador curl + npm `@desarrollado/dtunnel` | Hecho |
 | 5 | Panel superadmin (usuarios, planes, límites) | Hecho |
-| 5b | Admin en subdominio + recuperación de contraseña SMTP | Hecho (v1.0.7) |
-| 5c | Cambiar contraseña, suspender usuario, cron purga | Hecho (v1.0.9) |
+| 5b | Admin subdominio + SMTP recuperación contraseña | Hecho |
+| 5c | Cambiar contraseña, suspender, cron purga | Hecho |
+| 5d | Túnel nativo v2 (sin frpc) | Hecho |
+| 5e | Verificación email + admin reenvío | Hecho |
+| 5f | CLI `--host` / Docker | Hecho |
 | 6 | Billing / pagos automáticos | Futuro |
 
 ## Panel superadmin
 
 URL: `https://dtunnel-admin.desarrollado.com`
 
-Requiere cuenta con `is_admin` o email listado en `ADMIN_EMAILS` (variable de entorno de la API). El login es independiente del sitio principal (localStorage por origen).
-
 Funciones:
 
-- Resumen de usuarios, túneles y subdominios
-- Gestión de usuarios (plan, límites override, activar/desactivar, rol admin)
-- CRUD de planes (precios, límites de túneles y subdominios)
-- Cerrar túneles activos (con IP y último heartbeat)
-- Ajuste del límite de túneles anónimos
-
-Código: `admin-web/` · Despliegue: `python deploy/upload-admin.py`
+- Resumen, usuarios (plan, límites, suspender, activación, reset password)
+- CRUD planes, túneles activos, anónimos por IP, subdominios reservados
+- Logs de auditoría, ajustes (límite anónimo, heartbeat, purga)
+- Mantenimiento: purgar túneles obsoletos y logs antiguos
 
 ## Configuración (secretos)
 
@@ -104,7 +115,6 @@ En `secretos/.env.dtunnel` (nunca en git):
 ADMIN_EMAILS=admin@example.com
 DTUNNEL_ADMIN_PATH_PUBLIC=/home/desarrollado/web/dtunnel-admin.desarrollado.com/public_html
 
-# SMTP (recuperación de contraseña)
 SMTP_HOST=
 SMTP_PORT=465
 SMTP_USERNAME=
@@ -113,7 +123,7 @@ SMTP_FROM_EMAIL=
 SMTP_FROM_NAME=dtunnel
 ```
 
-Tras cambiar `ADMIN_EMAILS` o SMTP, redesplegar la API: `python deploy/upload-api.py`.
+Tras cambiar `ADMIN_EMAILS` o SMTP: `python deploy/upload-api.py`.
 
 ## Modelo free vs registrado
 
@@ -126,22 +136,21 @@ Tras cambiar `ADMIN_EMAILS` o SMTP, redesplegar la API: `python deploy/upload-ap
 
 ## Decisiones técnicas
 
-- **Transporte:** frp (no reimplementar WebSocket propio).
-- **Puerto frps vhost:** `18080` (Apache Hestia usa `8080`).
-- **Plantilla nginx:** dos bloques `server` — apex → Apache, wildcard → frps.
-- **Admin separado:** subdominio propio + CORS en API (`CORS_ORIGINS`).
+- **Transporte por defecto:** túnel nativo Node (v2); frp legacy opcional.
+- **Puerto gateway:** `18080` (Apache Hestia usa `8080`).
+- **Admin separado:** subdominio + CORS (`CORS_ORIGINS`).
 - **Secrets:** `secretos/.env.dtunnel` (nunca en git).
 
 ## Estructura del repo
 
 ```
 dtunnel/
-├── api/              # Auth, túneles, subdominios, SMTP
+├── api/              # Auth, túneles, subdominios, SMTP, admin
 ├── admin-web/        # Panel superadmin
 ├── client/           # CLI npm @desarrollado/dtunnel
 ├── install/dtunnel/  # Instalador curl
 ├── web/              # Landing → public_html
-├── server/           # frps + plantillas Hestia
+├── server/           # frps (legacy) + plantillas Hestia
 ├── deploy/           # Despliegue VPS
 └── docs/
 ```

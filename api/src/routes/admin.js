@@ -6,6 +6,8 @@ import {
   closeAnonymousTunnelsByIp,
   cleanupStaleTunnels,
   createPlan,
+  createEmailVerificationToken,
+  createPasswordResetToken,
   deleteTunnel,
   deleteUser,
   findTunnelById,
@@ -25,7 +27,10 @@ import {
   updatePlan,
   updateUser,
 } from '../db.js';
+import { sendActivationEmail, sendPasswordResetEmail } from '../mail.js';
 import { unregisterTunnel } from '../tunnel/native.js';
+
+const APP_URL = process.env.APP_URL || 'https://dtunnel.desarrollado.com';
 
 function normalizePlanInput(body = {}) {
   return {
@@ -150,11 +155,12 @@ export function createAdminRouter({ authRequired, adminRequired }) {
     const user = findUserById(id);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    const { plan, isAdmin, active, tunnelLimitOverride, reservedSubdomainLimitOverride } = req.body || {};
+    const { plan, isAdmin, active, emailVerified, tunnelLimitOverride, reservedSubdomainLimitOverride } = req.body || {};
     const updated = updateUser(id, {
       plan,
       is_admin: isAdmin,
       active,
+      email_verified: emailVerified,
       tunnel_limit_override: tunnelLimitOverride,
       reserved_subdomain_limit_override: reservedSubdomainLimitOverride,
     });
@@ -184,6 +190,48 @@ export function createAdminRouter({ authRequired, adminRequired }) {
     for (const sub of subdomains) unregisterTunnel(sub);
     audit(req, 'user.close_tunnels', 'user', id, { email: user.email, closedTunnels: changes });
     res.json({ ok: true, closedTunnels: changes });
+  });
+
+  router.post('/users/:id/send-activation-email', async (req, res) => {
+    const id = Number(req.params.id);
+    const user = findUserById(id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (user.email_verified) {
+      return res.status(400).json({ error: 'El email ya está verificado' });
+    }
+    try {
+      const token = createEmailVerificationToken(user.id);
+      await sendActivationEmail({
+        to: user.email,
+        verifyUrl: `${APP_URL}/verify-email.html?token=${token}`,
+      });
+    } catch (err) {
+      console.error('Error enviando email de activación:', err.message);
+      return res.status(503).json({ error: err.message || 'No se pudo enviar el correo' });
+    }
+    audit(req, 'user.send_activation', 'user', id, { email: user.email });
+    res.json({ ok: true, message: 'Correo de activación enviado' });
+  });
+
+  router.post('/users/:id/send-password-reset', async (req, res) => {
+    const id = Number(req.params.id);
+    const user = findUserById(id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!user.active) {
+      return res.status(400).json({ error: 'La cuenta está suspendida' });
+    }
+    try {
+      const token = createPasswordResetToken(user.id);
+      await sendPasswordResetEmail({
+        to: user.email,
+        resetUrl: `${APP_URL}/reset-password.html?token=${token}`,
+      });
+    } catch (err) {
+      console.error('Error enviando email de recuperación:', err.message);
+      return res.status(503).json({ error: err.message || 'No se pudo enviar el correo' });
+    }
+    audit(req, 'user.send_password_reset', 'user', id, { email: user.email });
+    res.json({ ok: true, message: 'Correo de recuperación enviado' });
   });
 
   router.delete('/users/:id', (req, res) => {

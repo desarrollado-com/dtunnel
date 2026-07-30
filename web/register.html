@@ -59,6 +59,11 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error');
+        if (!data.emailVerified) {
+          sessionStorage.setItem('dtunnel_pending_email', data.email);
+          window.location.href = '/verify-pending.html';
+          return;
+        }
         localStorage.setItem('dtunnel_token', data.token);
         localStorage.setItem('dtunnel_email', data.email);
         window.location.href = '/dashboard.html';

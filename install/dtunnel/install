@@ -11,7 +11,7 @@
 #
 set -euo pipefail
 
-DTUNNEL_VERSION="${DTUNNEL_VERSION:-2.0.0}"
+DTUNNEL_VERSION="${DTUNNEL_VERSION:-2.0.3}"
 NPM_PKG="@desarrollado/dtunnel@${DTUNNEL_VERSION}"
 INSTALL_BASE="${DTUNNEL_INSTALL_URL:-https://install.desarrollado.com/dtunnel}"
 FALLBACK_BASE="${DTUNNEL_INSTALL_FALLBACK:-https://dtunnel.desarrollado.com/install/dtunnel}"

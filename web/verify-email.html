@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificar email — dtunnel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+  <script src="/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="importmap">{"imports":{"@material/web/":"https://esm.run/@material/web/"}}</script>
+  <script type="module" src="/js/m3.js"></script>
+</head>
+<body>
+  <header class="top-app-bar">
+    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel</a>
+  </header>
+  <main class="auth-page">
+    <h1>Verificar email</h1>
+    <p id="status" class="text-muted">Verificando tu cuenta…</p>
+    <p id="msg" class="form-error" hidden></p>
+    <p id="ok" class="form-success" hidden></p>
+    <p class="text-muted" style="margin-top:1rem;font-size:0.9rem">
+      <a href="/login.html">Iniciar sesión</a>
+    </p>
+  </main>
+  <footer class="footer" data-site-footer></footer>
+  <script src="/js/site-footer.js"></script>
+  <script>
+    const token = new URLSearchParams(window.location.search).get('token');
+    const status = document.getElementById('status');
+    const msg = document.getElementById('msg');
+    const ok = document.getElementById('ok');
+
+    if (!token) {
+      status.hidden = true;
+      msg.textContent = 'Enlace inválido: falta el token.';
+      msg.hidden = false;
+    } else {
+      fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Error');
+          status.hidden = true;
+          ok.textContent = `Cuenta verificada (${data.email}). Ya puedes iniciar sesión.`;
+          ok.hidden = false;
+          sessionStorage.removeItem('dtunnel_pending_email');
+        })
+        .catch((err) => {
+          status.hidden = true;
+          msg.textContent = err.message;
+          msg.hidden = false;
+        });
+    }
+  </script>
+  <script src="/js/theme.js"></script>
+</body>
+</html>

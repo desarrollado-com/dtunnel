@@ -10,4 +10,4 @@ alwaysApply: false
 - Requiere `DTUNNEL_TOKEN` (mismo que `FRPS_TOKEN` del servidor).
 - `frpc.toml` generado en runtime — no commitear.
 - Validar que `frpc` esté en PATH; mensaje claro si falta.
-- `localIP = 127.0.0.1` por defecto; no asumir WSL salvo que el usuario lo pida.
+- `localIP` por defecto `127.0.0.1`; configurable con `--host`, `DTUNNEL_LOCAL_HOST` o `localHost` en `~/.dtunnel/config.json`.

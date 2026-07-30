@@ -178,6 +178,16 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
         <div class="docs-callout docs-callout-warn">
           El puerto de <code>dtunnel --port</code> debe coincidir con el puerto donde escucha tu aplicación local.
           Si Vite usa <code>5173</code>, ejecuta <code>dtunnel --port 5173</code>.
+
+        <h3>Docker y otros hostnames</h3>
+        <p>Por defecto el túnel reenvía a <code>127.0.0.1:PUERTO</code>. Si tu app no escucha en localhost
+          (p. ej. un servicio de Docker Compose llamado <code>mi-proyecto</code>), indica el host:</p>
+        <pre><code>dtunnel --port 3000 --host mi-proyecto
+# o de forma persistente:
+dtunnel config set localHost mi-proyecto
+dtunnel --port 3000</code></pre>
+        <p>El CLI debe poder resolver ese nombre (misma red Docker, entrada en <code>/etc/hosts</code>, etc.).
+          Comprueba con <code>curl http://mi-proyecto:3000</code> desde la máquina donde corre <code>dtunnel</code>.</p>
         </div>
       </section>
 
@@ -196,6 +206,14 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
             <tr>
               <td><code>dtunnel -p 3000 -s mi-api</code></td>
               <td>Abre un <strong>túnel</strong> usando el nombre <code>mi-api</code> que ya reservaste antes</td>
+            </tr>
+            <tr>
+              <td><code>dtunnel -p 3000 -H mi-proyecto</code></td>
+              <td>Reenvía a <code>http://mi-proyecto:3000</code> en lugar de <code>127.0.0.1</code> (Docker, etc.)</td>
+            </tr>
+            <tr>
+              <td><code>dtunnel config set localHost mi-proyecto</code></td>
+              <td>Guarda el host local por defecto en <code>~/.dtunnel/config.json</code></td>
             </tr>
             <tr>
               <td><code>dtunnel register</code></td>
@@ -630,9 +648,16 @@ Authorization: Bearer &lt;token&gt;
               <td><code>https://dtunnel.desarrollado.com/api</code></td>
               <td>URL base de la API (solo si usas otro entorno)</td>
             </tr>
+            <tr>
+              <td><code>DTUNNEL_LOCAL_HOST</code></td>
+              <td><code>127.0.0.1</code></td>
+              <td>Host al que reenvía el túnel (p. ej. <code>mi-proyecto</code> en Docker)</td>
+            </tr>
           </tbody>
         </table>
-        <p>El token de sesión y el <code>tunnelToken</code> los gestiona el CLI; no hace falta exportar variables manualmente.</p>
+        <p>También en <code>~/.dtunnel/config.json</code>: <code>localHost</code>, <code>apiUrl</code>, <code>token</code>.
+          Ver <a href="/docs.html#variables">documentación</a> y <a href="https://github.com/desarrollado-com/dtunnel/blob/main/docs/docker-compose.example.md" target="_blank" rel="noopener">ejemplo Docker Compose</a>.</p>
+        <p>El token de sesión y el <code>tunnelToken</code> los gestiona el CLI; no hace falta exportarlos manualmente.</p>
       </section>
 
       <!-- Problemas -->
@@ -650,7 +675,7 @@ Authorization: Bearer &lt;token&gt;
         <h3>502 Bad Gateway en la URL pública</h3>
         <ul class="docs-list">
           <li>Comprueba que <code>dtunnel --port</code> sigue en ejecución (no cerraste la terminal sin <code>down</code>).</li>
-          <li>Verifica que tu app local responde: <code>curl http://127.0.0.1:PUERTO</code></li>
+          <li>Verifica que tu app local responde: <code>curl http://127.0.0.1:PUERTO</code> (o <code>curl http://mi-proyecto:PUERTO</code> si usas <code>--host</code>)</li>
           <li>El puerto del CLI debe coincidir con el de tu app.</li>
         </ul>
 

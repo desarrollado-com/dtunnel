@@ -65,11 +65,14 @@ async function loadUsers() {
       <td>${user.email}</td>
       <td>${badge(user.plan)}</td>
       <td>${user.active ? badge('activo', 'ok') : badge('inactivo', 'warn')}</td>
+      <td>${user.emailVerified ? badge('sí', 'ok') : badge('pendiente', 'warn')}</td>
       <td>${user.activeTunnelCount} / ${user.tunnelLimit}</td>
       <td>${user.reservedCount} / ${user.reservedSubdomainLimit}</td>
       <td>${user.isAdmin ? badge('sí', 'accent') : '—'}</td>
       <td class="admin-actions">
         <button type="button" class="btn btn-ghost btn-sm" data-edit-user="${user.id}">Editar</button>
+        ${!user.emailVerified ? `<button type="button" class="btn btn-ghost btn-sm" data-send-activation="${user.id}">Reenviar activación</button>` : ''}
+        <button type="button" class="btn btn-ghost btn-sm" data-send-password-reset="${user.id}">Recuperar contraseña</button>
         ${user.activeTunnelCount > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-close-user-tunnels="${user.id}">Cerrar túneles</button>` : ''}
         ${user.active ? `<button type="button" class="btn btn-ghost btn-sm" data-suspend-user="${user.id}">Suspender</button>` : ''}
         <button type="button" class="btn btn-ghost btn-sm btn-danger" data-delete-user="${user.id}">Eliminar</button>
@@ -213,6 +216,7 @@ function showUserEditor(userId) {
     document.getElementById('edit-user-tunnel-override').value = user.tunnelLimitOverride ?? '';
     document.getElementById('edit-user-subdomain-override').value = user.reservedSubdomainLimitOverride ?? '';
     document.getElementById('edit-user-active').checked = user.active;
+    document.getElementById('edit-user-verified').checked = user.emailVerified;
     document.getElementById('edit-user-admin').checked = user.isAdmin;
     document.getElementById('user-form-msg').hidden = true;
     document.getElementById('user-dialog').showModal();
@@ -262,7 +266,35 @@ document.getElementById('users-table').addEventListener('click', (e) => {
   if (closeId) closeUserTunnels(closeId);
   const deleteId = Number(e.target.dataset.deleteUser);
   if (deleteId) deleteUser(deleteId);
+  const activationId = Number(e.target.dataset.sendActivation);
+  if (activationId) sendActivationEmail(activationId);
+  const resetId = Number(e.target.dataset.sendPasswordReset);
+  if (resetId) sendPasswordResetEmail(resetId);
 });
+
+async function sendActivationEmail(userId) {
+  if (!confirm('¿Reenviar el correo de activación a este usuario?')) return;
+  try {
+    const data = await api(`/users/${userId}/send-activation-email`, { method: 'POST' });
+    if (!data) return;
+    alert(data.message || 'Correo de activación enviado');
+    loadLogs();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function sendPasswordResetEmail(userId) {
+  if (!confirm('¿Enviar correo de recuperación de contraseña a este usuario?')) return;
+  try {
+    const data = await api(`/users/${userId}/send-password-reset`, { method: 'POST' });
+    if (!data) return;
+    alert(data.message || 'Correo de recuperación enviado');
+    loadLogs();
+  } catch (err) {
+    alert(err.message);
+  }
+}
 
 async function suspendUser(userId) {
   if (!confirm('¿Suspender esta cuenta y cerrar todos sus túneles?')) return;
@@ -367,6 +399,7 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
       body: JSON.stringify({
         plan: document.getElementById('edit-user-plan').value,
         active: document.getElementById('edit-user-active').checked,
+        emailVerified: document.getElementById('edit-user-verified').checked,
         isAdmin: document.getElementById('edit-user-admin').checked,
         tunnelLimitOverride: tunnelOverride === '' ? null : Number(tunnelOverride),
         reservedSubdomainLimitOverride: subdomainOverride === '' ? null : Number(subdomainOverride),

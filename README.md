@@ -2,7 +2,7 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Plataforma (web + API):** `2.0.0` · **CLI npm:** `2.0.0`
+**Plataforma (web + API):** `2.1.0` · **CLI npm:** `2.0.3`
 
 ```
 localhost:88080  →  CLI Node (WebSocket)  →  API gateway (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
@@ -119,4 +119,5 @@ Variables SMTP y admin en `secretos/.env.dtunnel`: `SMTP_*`, `ADMIN_EMAILS`, `DT
 - [Hestia / infra](docs/hestia.md)
 - [Monitorización](docs/monitoring.md)
 - [Arquitectura](docs/architecture.md)
+- [Docker Compose](docs/docker-compose.example.md)
 - [Panel admin](admin-web/README.md)

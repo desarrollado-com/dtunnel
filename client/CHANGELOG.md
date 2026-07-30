@@ -2,6 +2,25 @@
 
 Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
 
+## [2.0.3] - 2026-07-30
+
+### Añadido
+
+- Mensajes claros en `login` / `register` cuando falta verificación de email.
+- `apiFetch` expone `err.code` para `EMAIL_NOT_VERIFIED`.
+
+### Cambiado
+
+- `register` no guarda token hasta que el email esté verificado.
+
+## [2.0.2] - 2026-07-30
+
+### Añadido
+
+- `--host` / `-H` y `DTUNNEL_LOCAL_HOST` para tunelar a un hostname distinto de `127.0.0.1` (p. ej. servicio Docker `mi-proyecto`).
+- `localHost` persistente en `~/.dtunnel/config.json` (`dtunnel config set localHost mi-proyecto`).
+- Comando `dtunnel config` para ver y ajustar la configuración local.
+
 ## [2.0.1] - 2026-07-30
 
 ### Corregido
