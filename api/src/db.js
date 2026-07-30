@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -62,6 +63,15 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
   );
 `);
 
@@ -276,6 +286,47 @@ export function getReservedSubdomain(name) {
 
 export function getUserSubdomains(userId) {
   return db.prepare('SELECT name FROM reserved_subdomains WHERE user_id = ?').all(userId);
+}
+
+export function releaseSubdomain(userId, name) {
+  const clean = String(name || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+  const row = db.prepare(
+    'SELECT id FROM reserved_subdomains WHERE name = ? AND user_id = ?',
+  ).get(clean, userId);
+  if (!row) return { released: false };
+  db.prepare('DELETE FROM reserved_subdomains WHERE id = ?').run(row.id);
+  return { released: true, name: clean };
+}
+
+export function createPasswordResetToken(userId) {
+  const raw = randomBytes(32).toString('hex');
+  const hash = createHash('sha256').update(raw).digest('hex');
+  db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(userId);
+  db.prepare(`
+    INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+    VALUES (?, ?, datetime('now', '+1 hour'))
+  `).run(userId, hash);
+  return raw;
+}
+
+export function findUserByResetToken(rawToken) {
+  const hash = createHash('sha256').update(String(rawToken)).digest('hex');
+  return db.prepare(`
+    SELECT t.user_id, u.email
+    FROM password_reset_tokens t
+    JOIN users u ON u.id = t.user_id
+    WHERE t.token_hash = ? AND t.expires_at > datetime('now')
+  `).get(hash);
+}
+
+export function consumePasswordResetToken(rawToken) {
+  const hash = createHash('sha256').update(String(rawToken)).digest('hex');
+  db.prepare('DELETE FROM password_reset_tokens WHERE token_hash = ?').run(hash);
+}
+
+export function updateUserPassword(userId, password) {
+  const hash = bcrypt.hashSync(password, 10);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
 }
 
 export function countActiveTunnels(userId) {

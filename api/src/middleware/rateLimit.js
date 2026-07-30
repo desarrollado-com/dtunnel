@@ -20,6 +20,14 @@ export const loginLimiter = rateLimit({
   handler: jsonHandler,
 });
 
+export const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler,
+});
+
 export const tunnelCreateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,

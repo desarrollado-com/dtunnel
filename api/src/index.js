@@ -6,6 +6,11 @@ import {
   createUser,
   findUserByEmail,
   findUserById,
+  findUserByResetToken,
+  consumePasswordResetToken,
+  createPasswordResetToken,
+  updateUserPassword,
+  releaseSubdomain,
   getAnonTunnelLimit,
   getReservedSubdomain,
   getUserLimits,
@@ -30,11 +35,19 @@ import {
 } from './db.js';
 import { createAdminRouter } from './routes/admin.js';
 import { getClientIp } from './middleware/clientIp.js';
-import { registerLimiter, loginLimiter, tunnelCreateLimiter } from './middleware/rateLimit.js';
+import { registerLimiter, loginLimiter, tunnelCreateLimiter, forgotPasswordLimiter } from './middleware/rateLimit.js';
+import { sendPasswordResetEmail } from './mail.js';
+
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS
+  || 'https://dtunnel.desarrollado.com,https://dtunnel-admin.desarrollado.com')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const APP_URL = process.env.APP_URL || 'https://dtunnel.desarrollado.com';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const API_VERSION = process.env.API_VERSION || '1.0.6';
+const API_VERSION = process.env.API_VERSION || '1.0.7';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const FRPS_TOKEN = process.env.FRPS_TOKEN || '';
 const FRPS_SERVER = process.env.FRPS_SERVER || 'dtunnel.desarrollado.com';
@@ -64,7 +77,7 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 app.set('trust proxy', 1);
-app.use(cors());
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
 
 function authOptional(req, _res, next) {
@@ -182,6 +195,40 @@ app.post('/auth/login', loginLimiter, (req, res) => {
   });
 });
 
+app.post('/auth/forgot-password', forgotPasswordLimiter, async (req, res) => {
+  const email = req.body?.email;
+  if (!email) {
+    return res.status(400).json({ error: 'Email requerido' });
+  }
+  const user = findUserByEmail(email);
+  if (user?.active) {
+    try {
+      const token = createPasswordResetToken(user.id);
+      await sendPasswordResetEmail({
+        to: user.email,
+        resetUrl: `${APP_URL}/reset-password.html?token=${token}`,
+      });
+    } catch (err) {
+      console.error('Error enviando email de recuperación:', err.message);
+    }
+  }
+  res.json({ ok: true, message: 'Si el email existe, recibirás un enlace de recuperación.' });
+});
+
+app.post('/auth/reset-password', async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password || password.length < 8) {
+    return res.status(400).json({ error: 'Token y contraseña (mín. 8 caracteres) requeridos' });
+  }
+  const row = findUserByResetToken(token);
+  if (!row) {
+    return res.status(400).json({ error: 'Enlace inválido o expirado' });
+  }
+  updateUserPassword(row.user_id, password);
+  consumePasswordResetToken(token);
+  res.json({ ok: true });
+});
+
 app.get('/me', authRequired, (req, res) => {
   const subdomains = getUserSubdomains(req.user.userId);
   const limits = getUserLimits(req.dbUser, ANON_LIMIT);
@@ -207,6 +254,18 @@ app.post('/subdomains/reserve', authRequired, (req, res) => {
     }
     res.status(400).json({ error: e.message });
   }
+});
+
+app.delete('/subdomains/:name', authRequired, (req, res) => {
+  const name = String(req.params.name || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+  if (!name) {
+    return res.status(400).json({ error: 'Nombre inválido' });
+  }
+  const result = releaseSubdomain(req.user.userId, name);
+  if (!result.released) {
+    return res.status(404).json({ error: 'Subdominio no encontrado en tu cuenta' });
+  }
+  res.json({ ok: true, name: result.name });
 });
 
 app.get('/tunnels', authRequired, (req, res) => {

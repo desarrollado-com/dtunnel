@@ -119,12 +119,33 @@ def main() -> int:
 
     server_env = f"FRPS_TOKEN={token}\nFRPS_VHOST_PORT={port}\nFRPS_BIND_PORT=7000\n"
     admin_emails = cfg.get("ADMIN_EMAILS", "")
-    api_env = (
-        f"PORT=3001\nJWT_SECRET={jwt_secret}\nFRPS_TOKEN={token}\n"
-        f"FRPS_SERVER={domain}\nFRPS_PORT=7000\nDOMAIN={domain}\n"
-        f"ANON_TUNNEL_LIMIT=1\nUSER_TUNNEL_LIMIT=5\n"
-        f"ADMIN_EMAILS={admin_emails}\n"
-    )
+    app_url = f"https://{domain}"
+    cors = f"https://{domain},https://dtunnel-admin.desarrollado.com"
+    api_env_lines = [
+        "PORT=3001",
+        f"JWT_SECRET={jwt_secret}",
+        f"FRPS_TOKEN={token}",
+        f"FRPS_SERVER={domain}",
+        "FRPS_PORT=7000",
+        f"DOMAIN={domain}",
+        "ANON_TUNNEL_LIMIT=1",
+        "HEARTBEAT_TIMEOUT_MIN=10",
+        "STALE_TUNNEL_HOURS=24",
+        "USER_TUNNEL_LIMIT=5",
+        f"ADMIN_EMAILS={admin_emails}",
+        f"APP_URL={app_url}",
+        f"CORS_ORIGINS={cors}",
+        "API_VERSION=1.0.7",
+    ]
+    for key in ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_NAME"):
+        if cfg.get(key):
+            api_env_lines.append(f"{key}={cfg[key]}")
+    smtp_from_email = cfg.get("SMTP_FROM_EMAIL") or cfg.get("SMTP_FROM")
+    if smtp_from_email:
+        api_env_lines.append(f"SMTP_FROM_EMAIL={smtp_from_email}")
+    if cfg.get("SMTP_FROM"):
+        api_env_lines.append(f"SMTP_FROM={cfg['SMTP_FROM']}")
+    api_env = "\n".join(api_env_lines) + "\n"
 
     (DTUNNEL_ROOT / "server" / ".env").write_text(server_env, encoding="utf-8")
 
@@ -190,7 +211,9 @@ def main() -> int:
     print("")
     print("Despliegue completado.")
     print(f"  Landing: https://{domain}")
+    print("  Admin:   https://dtunnel-admin.desarrollado.com")
     print(f"  API:     https://{domain}/api/health")
+    print("  Admin deploy: python deploy/upload-admin.py")
     print("  CLI:     npm install -g @desarrollado/dtunnel && dtunnel --port 88080")
     return 0
 

@@ -1,5 +1,7 @@
+import { API_BASE, MAIN_SITE, TUNNEL_DOMAIN } from './config.js';
+
 const token = localStorage.getItem('dtunnel_token');
-if (!token) window.location.href = '/login.html?next=/admin.html';
+if (!token) window.location.href = '/login.html';
 
 const headers = {
   Authorization: `Bearer ${token}`,
@@ -9,14 +11,15 @@ const headers = {
 let plansCache = [];
 
 async function api(path, options = {}) {
-  const res = await fetch(`/api/admin${path}`, { ...options, headers: { ...headers, ...options.headers } });
+  const res = await fetch(`${API_BASE}/admin${path}`, { ...options, headers: { ...headers, ...options.headers } });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) {
-    window.location.href = '/login.html?next=/admin.html';
+    window.location.href = '/login.html';
     return null;
   }
   if (res.status === 403) {
-    window.location.href = '/dashboard.html';
+    alert('No tienes permisos de administrador.');
+    window.location.href = MAIN_SITE;
     return null;
   }
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -100,13 +103,15 @@ async function loadTunnels() {
   const tbody = document.querySelector('#tunnels-table tbody');
   tbody.innerHTML = data.tunnels.length ? data.tunnels.map((tunnel) => `
     <tr>
-      <td><a href="https://${tunnel.subdomain}.dtunnel.desarrollado.com" target="_blank" rel="noopener">${tunnel.subdomain}</a></td>
+      <td><a href="https://${tunnel.subdomain}.${TUNNEL_DOMAIN}" target="_blank" rel="noopener">${tunnel.subdomain}</a></td>
       <td>${tunnel.port}</td>
       <td>${tunnel.email || '<em>anónimo</em>'}</td>
+      <td>${tunnel.clientIp || '—'}</td>
+      <td>${fmtDate(tunnel.lastHeartbeat)}</td>
       <td>${fmtDate(tunnel.createdAt)}</td>
       <td><button type="button" class="btn btn-ghost btn-sm" data-delete-tunnel="${tunnel.id}">Cerrar</button></td>
     </tr>
-  `).join('') : '<tr><td colspan="5" class="empty-cell">No hay túneles activos</td></tr>';
+  `).join('') : '<tr><td colspan="7" class="empty-cell">No hay túneles activos</td></tr>';
 }
 
 async function loadSettings() {
@@ -117,17 +122,17 @@ async function loadSettings() {
 
 function showUserEditor(userId) {
   api('/users').then((users) => {
-  const user = users?.users.find((u) => u.id === userId);
-  if (!user) return;
-  document.getElementById('edit-user-id').value = user.id;
-  document.getElementById('edit-user-email').value = user.email;
-  document.getElementById('edit-user-plan').value = user.plan;
-  document.getElementById('edit-user-tunnel-override').value = user.tunnelLimitOverride ?? '';
-  document.getElementById('edit-user-subdomain-override').value = user.reservedSubdomainLimitOverride ?? '';
-  document.getElementById('edit-user-active').checked = user.active;
-  document.getElementById('edit-user-admin').checked = user.isAdmin;
-  document.getElementById('user-form-msg').hidden = true;
-  document.getElementById('user-dialog').showModal();
+    const user = users?.users.find((u) => u.id === userId);
+    if (!user) return;
+    document.getElementById('edit-user-id').value = user.id;
+    document.getElementById('edit-user-email').value = user.email;
+    document.getElementById('edit-user-plan').value = user.plan;
+    document.getElementById('edit-user-tunnel-override').value = user.tunnelLimitOverride ?? '';
+    document.getElementById('edit-user-subdomain-override').value = user.reservedSubdomainLimitOverride ?? '';
+    document.getElementById('edit-user-active').checked = user.active;
+    document.getElementById('edit-user-admin').checked = user.isAdmin;
+    document.getElementById('user-form-msg').hidden = true;
+    document.getElementById('user-dialog').showModal();
   });
 }
 
@@ -265,7 +270,7 @@ document.getElementById('logout').addEventListener('click', (e) => {
   e.preventDefault();
   localStorage.removeItem('dtunnel_token');
   localStorage.removeItem('dtunnel_email');
-  window.location.href = '/';
+  window.location.href = '/login.html';
 });
 
 async function init() {

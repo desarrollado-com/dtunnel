@@ -2,7 +2,7 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Versión actual del CLI:** `1.0.6`
+**Plataforma (web + API):** `1.0.7` · **CLI npm:** `1.0.6`
 
 ```
 localhost:88080  →  frpc  →  frps (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
@@ -56,10 +56,11 @@ Documentación: [dtunnel.desarrollado.com/docs.html](https://dtunnel.desarrollad
 
 ```
 dtunnel/
-├── api/              # API Node (auth, túneles, subdominios, admin)
+├── api/              # API Node (auth, túneles, subdominios, admin, SMTP)
+├── admin-web/        # Panel superadmin → dtunnel-admin.desarrollado.com
 ├── client/           # CLI npm @desarrollado/dtunnel
 ├── install/dtunnel/  # Instalador curl (frpc + CLI bash)
-├── web/              # Landing, docs, admin → public_html en Hestia
+├── web/              # Landing, docs, dashboard → public_html principal
 ├── server/           # frps (Docker) + plantillas Hestia
 ├── deploy/           # Scripts de despliegue al VPS
 └── docs/             # Arquitectura, Hestia, plan de producto
@@ -70,28 +71,37 @@ dtunnel/
 Credenciales del VPS en `secretos/.env.dtunnel` (fuera de este repo, nunca commitear).
 
 ```bash
-# Desplegar broker + API + plantillas Hestia
+# Despliegue completo (broker + API + web + plantillas Hestia)
 python deploy/deploy.py
 
-# Solo web + admin panel
+# Solo sitio público (landing, docs, dashboard, recuperación de contraseña)
 python deploy/upload-web.py
+
+# Solo panel admin (subdominio separado)
+python deploy/upload-admin.py
 
 # Solo instalador curl
 python deploy/upload-install.py
 
-# Solo API (rebuild Docker)
+# Solo API (rebuild Docker, SMTP/CORS en .env)
 python deploy/upload-api.py
+
+# SSL Let's Encrypt del subdominio admin (si hace falta)
+python deploy/fix-admin-ssl.py
 
 # Túneles en producción (listar / purgar huérfanos anónimos)
 python deploy/tunnels.py list
 python deploy/tunnels.py purge-anon
 ```
 
+Variables SMTP y admin en `secretos/.env.dtunnel`: `SMTP_*`, `ADMIN_EMAILS`, `DTUNNEL_ADMIN_PATH_PUBLIC`.
+
 ## Dominios
 
 | Host | Uso |
 |------|-----|
-| `dtunnel.desarrollado.com` | Landing, login, API, admin |
+| `dtunnel.desarrollado.com` | Landing, login, dashboard, API `/api/*` |
+| `dtunnel-admin.desarrollado.com` | Panel superadmin (origen separado) |
 | `install.desarrollado.com` | Instalador curl |
 | `*.dtunnel.desarrollado.com` | Túneles activos |
 | [npmjs.com/@desarrollado/dtunnel](https://www.npmjs.com/package/@desarrollado/dtunnel) | CLI Node.js |
@@ -102,3 +112,4 @@ python deploy/tunnels.py purge-anon
 - [Changelog](CHANGELOG.md) · [web](https://dtunnel.desarrollado.com/changelog.html)
 - [Hestia / infra](docs/hestia.md)
 - [Arquitectura](docs/architecture.md)
+- [Panel admin](admin-web/README.md)

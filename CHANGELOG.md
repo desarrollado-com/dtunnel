@@ -5,6 +5,21 @@ Todos los cambios notables de dtunnel se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.7] - 2026-07-30
+
+### Añadido
+
+- Recuperación de contraseña por email (`/forgot-password.html`, `POST /api/auth/forgot-password`).
+- Panel de administración en subdominio dedicado: `https://dtunnel-admin.desarrollado.com`.
+- Dashboard de usuario: túneles activos y liberar subdominios reservados.
+- `DELETE /api/subdomains/:name` para liberar nombres reservados.
+
+### Cambiado
+
+- `/admin.html` en el sitio principal redirige al panel admin separado.
+- CORS de la API incluye el origen del panel admin.
+- Deploy: `upload-admin.py` y variables SMTP/CORS en `.env` de la API.
+
 ## [1.0.6] - 2026-07-30
 
 ### Añadido
@@ -86,7 +101,7 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
 - Primera publicación en npm: `@desarrollado/dtunnel`.
 - Instalador curl universal (`install.desarrollado.com`).
-- Panel superadmin (`/admin.html`): usuarios, planes, túneles activos, ajustes globales.
+- Panel superadmin (`dtunnel-admin.desarrollado.com`): usuarios, planes, túneles activos, ajustes globales.
 - API `/api/admin/*` con límites por plan y overrides por usuario.
 
 ## [1.0.0] - 2026-07-21
@@ -98,6 +113,7 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - CLI: `dtunnel --port`, `login`, `register`, `reserve`, `down`.
 - Landing y documentación en `web/`.
 
+[1.0.7]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.3...v1.0.4

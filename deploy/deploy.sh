@@ -1,5 +1,6 @@
 #!/bin/bash
 # Despliega dtunnel completo al VPS usando secretos/.env.dtunnel
+# Recomendado: python deploy/deploy.py (más completo: SMTP, CORS, admin-web)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -71,8 +72,16 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 printf 'FRPS_TOKEN=%s\nFRPS_VHOST_PORT=%s\nFRPS_BIND_PORT=7000\n' \
   "$DTUNNEL_TOKEN" "${DTUNNEL_PORT:-18080}" > "$TMP_DIR/server.env"
-printf 'PORT=3001\nJWT_SECRET=%s\nFRPS_TOKEN=%s\nFRPS_SERVER=%s\nFRPS_PORT=7000\nDOMAIN=%s\nANON_TUNNEL_LIMIT=1\nUSER_TUNNEL_LIMIT=5\n' \
-  "$JWT_SECRET" "$DTUNNEL_TOKEN" "$DOMAIN" "$DOMAIN" > "$TMP_DIR/api.env"
+printf 'PORT=3001\nJWT_SECRET=%s\nFRPS_TOKEN=%s\nFRPS_SERVER=%s\nFRPS_PORT=7000\nDOMAIN=%s\nANON_TUNNEL_LIMIT=1\nUSER_TUNNEL_LIMIT=5\nAPI_VERSION=1.0.7\nAPP_URL=https://%s\nCORS_ORIGINS=https://%s,https://dtunnel-admin.desarrollado.com\n' \
+  "$JWT_SECRET" "$DTUNNEL_TOKEN" "$DOMAIN" "$DOMAIN" "$DOMAIN" "$DOMAIN" > "$TMP_DIR/api.env"
+if [ -n "${ADMIN_EMAILS:-}" ]; then
+  printf 'ADMIN_EMAILS=%s\n' "$ADMIN_EMAILS" >> "$TMP_DIR/api.env"
+fi
+for key in SMTP_HOST SMTP_PORT SMTP_USERNAME SMTP_PASSWORD SMTP_FROM_NAME SMTP_FROM_EMAIL SMTP_FROM; do
+  if [ -n "${!key:-}" ]; then
+    printf '%s=%s\n' "$key" "${!key}" >> "$TMP_DIR/api.env"
+  fi
+done
 "${SCP_ROOT[@]}" "$TMP_DIR/server.env" "${ROOT_USER}@${SERVER_IP}:${REMOTE_OPT}/server/.env"
 "${SCP_ROOT[@]}" "$TMP_DIR/api.env" "${ROOT_USER}@${SERVER_IP}:${REMOTE_OPT}/api/.env"
 
@@ -98,5 +107,7 @@ echo "==> Verificación"
 echo ""
 echo "Despliegue completado."
 echo "  Landing:  https://${DOMAIN}"
+echo "  Admin:    https://dtunnel-admin.desarrollado.com"
 echo "  API:      https://${DOMAIN}/api/health"
+echo "  Admin deploy: python deploy/upload-admin.py"
 echo "  CLI:      npm install -g @desarrollado/dtunnel && dtunnel --port 88080"

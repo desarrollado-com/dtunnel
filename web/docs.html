@@ -102,7 +102,7 @@
       <!-- Instalación -->
       <section id="instalacion" class="docs-section">
         <h2>Instalación</h2>
-        <p>Versión actual del CLI: <strong>1.0.6</strong> · Comprueba la tuya con <code>dtunnel version</code></p>
+        <p>Plataforma web/API: <strong>1.0.7</strong> · CLI npm: <strong>1.0.6</strong> · Comprueba con <code>dtunnel version</code></p>
 
         <h3>Instalador universal (Linux, macOS y WSL)</h3>
         <p>Este método instala automáticamente la versión correcta de <code>frpc</code> y el CLI
@@ -130,7 +130,7 @@ dtunnel --help</code></pre>
         <p>Consulta el <a href="/changelog.html">changelog</a> para ver qué incluye cada versión.</p>
         <p>Primero comprueba qué versión tienes instalada:</p>
         <pre><code>dtunnel version</code></pre>
-        <p>Versión publicada actualmente: <strong>1.0.6</strong></p>
+        <p>Versión publicada de la plataforma: <strong>1.0.7</strong> · CLI: <strong>1.0.6</strong></p>
 
         <h3>Linux / macOS / WSL (instalador curl)</h3>
         <p>Vuelve a ejecutar el instalador; sobrescribe <code>frpc</code> y <code>dtunnel</code> en <code>/usr/local/bin</code>:</p>
@@ -310,7 +310,8 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
 dtunnel reserve mi-api    # guarda "mi-api" en tu cuenta — NO abre túnel</code></pre>
         <p>
           También puedes reservar desde el <a href="/dashboard.html">panel web</a> tras
-          <a href="/login.html">iniciar sesión</a>.
+          <a href="/login.html">iniciar sesión</a> ·
+          <a href="/forgot-password.html">olvidé mi contraseña</a>.
           En este punto <code>https://mi-api.dtunnel.desarrollado.com</code> <strong>aún no responde</strong>:
           solo has reclamado el nombre.
         </p>
@@ -442,7 +443,14 @@ Content-Type: application/json
 
 POST /api/auth/login
 { "email": "tu@email.com", "password": "..." }
-# → { "token": "...", "email": "..." }</code></pre>
+# → { "token": "...", "email": "...", "isAdmin": false }
+
+POST /api/auth/forgot-password
+{ "email": "tu@email.com" }
+# → { "ok": true, "message": "..." }  (siempre 200 si el formato es válido)
+
+POST /api/auth/reset-password
+{ "token": "...", "password": "minimo8chars" }</code></pre>
 
         <h3>Crear túnel</h3>
         <pre><code>POST /api/tunnels
@@ -470,7 +478,15 @@ Authorization: Bearer &lt;token&gt;
 
 GET /api/me
 Authorization: Bearer &lt;token&gt;
-# → { "email": "...", "subdomains": ["mi-api"] }</code></pre>
+# → { "email": "...", "subdomains": ["mi-api"], "limits": { ... } }
+
+GET /api/tunnels
+Authorization: Bearer &lt;token&gt;
+# → { "tunnels": [{ "subdomain", "port", "httpsUrl", "createdAt" }] }
+
+DELETE /api/subdomains/mi-api
+Authorization: Bearer &lt;token&gt;
+# Libera un nombre reservado</code></pre>
       </section>
 
       <!-- Cómo funciona -->
@@ -592,7 +608,7 @@ Authorization: Bearer &lt;token&gt;
         <h2>Panel de administración</h2>
         <p>
           Superadmins pueden gestionar usuarios, planes, precios y límites en
-          <a href="/admin.html">dtunnel.desarrollado.com/admin.html</a> (requiere cuenta con permisos admin).
+          <a href="https://dtunnel-admin.desarrollado.com/" target="_blank" rel="noopener">dtunnel-admin.desarrollado.com</a> (requiere cuenta con permisos admin).
         </p>
         <p>Desde el panel puedes:</p>
         <ul class="docs-list">

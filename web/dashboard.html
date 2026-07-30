@@ -26,7 +26,7 @@
     <p id="email" class="text-muted" style="margin-bottom:0.5rem"></p>
     <p id="plan-info" class="text-muted" style="margin-bottom:2rem"></p>
     <p id="admin-link" hidden style="margin-bottom:2rem">
-      <a href="/admin.html" class="btn btn-outlined">Panel de administración</a>
+      <a href="https://dtunnel-admin.desarrollado.com/" class="btn btn-outlined" target="_blank" rel="noopener">Panel de administración</a>
     </p>
 
     <div class="docs-callout" style="margin-bottom:2rem;max-width:720px">
@@ -58,6 +58,26 @@
     </p>
     <ul id="subdomains" style="list-style:none"></ul>
 
+    <h2 style="margin-top:2rem">Túneles activos</h2>
+    <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">
+      Conexiones abiertas ahora mismo desde el CLI. Ciérralas con <code>dtunnel down</code> o desde aquí.
+    </p>
+    <div class="table-wrap" style="max-width:720px;margin-bottom:2rem">
+      <table class="admin-table" id="tunnels-table">
+        <thead>
+          <tr>
+            <th>Subdominio</th>
+            <th>Puerto local</th>
+            <th>URL</th>
+            <th>Desde</th>
+          </tr>
+        </thead>
+        <tbody id="tunnels-body">
+          <tr><td colspan="4" class="text-muted">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <h2 style="margin-top:2rem">Abrir un túnel (CLI)</h2>
     <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">Paso 1 ya lo hiciste al reservar. Paso 2 es cuando quieras exponer tu app:</p>
     <pre><code>dtunnel login
@@ -71,6 +91,43 @@ dtunnel down                        # al terminar (la reserva sigue)</code></pre
 
     const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
+    function fmtDate(value) {
+      if (!value) return '—';
+      return new Date(value.includes('T') ? value : `${value}Z`).toLocaleString('es');
+    }
+
+    async function loadTunnels() {
+      const tbody = document.getElementById('tunnels-body');
+      try {
+        const res = await fetch('/api/tunnels', { headers });
+        if (!res.ok) throw new Error('No se pudieron cargar los túneles');
+        const data = await res.json();
+        tbody.innerHTML = data.tunnels.length
+          ? data.tunnels.map((t) => `
+            <tr>
+              <td><code>${t.subdomain}</code></td>
+              <td>${t.port}</td>
+              <td><a href="${t.httpsUrl}" target="_blank" rel="noopener">${t.subdomain}.dtunnel.desarrollado.com</a></td>
+              <td>${fmtDate(t.createdAt)}</td>
+            </tr>
+          `).join('')
+          : '<tr><td colspan="4" class="text-muted">Ningún túnel activo. Abre uno con el CLI.</td></tr>';
+      } catch {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No se pudieron cargar los túneles</td></tr>';
+      }
+    }
+
+    async function releaseSubdomain(name) {
+      if (!confirm(`¿Liberar el nombre "${name}"? Otro usuario podrá reservarlo.`)) return;
+      const res = await fetch(`/api/subdomains/${encodeURIComponent(name)}`, { method: 'DELETE', headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'No se pudo liberar el subdominio');
+        return;
+      }
+      loadMe();
+    }
+
     async function loadMe() {
       const res = await fetch('/api/me', { headers });
       if (!res.ok) { window.location.href = '/login.html'; return; }
@@ -81,8 +138,18 @@ dtunnel down                        # al terminar (la reserva sigue)</code></pre
       if (data.isAdmin) document.getElementById('admin-link').hidden = false;
       const ul = document.getElementById('subdomains');
       ul.innerHTML = data.subdomains.length
-        ? data.subdomains.map(s => `<li style="margin-bottom:0.5rem"><a href="https://${s}.dtunnel.desarrollado.com">${s}.dtunnel.desarrollado.com</a> <span class="text-muted" style="font-size:0.85rem">— requiere túnel activo</span></li>`).join('')
+        ? data.subdomains.map(s => `
+          <li style="margin-bottom:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center">
+            <a href="https://${s}.dtunnel.desarrollado.com">${s}.dtunnel.desarrollado.com</a>
+            <span class="text-muted" style="font-size:0.85rem">— requiere túnel activo</span>
+            <button type="button" class="btn btn-ghost btn-sm" data-release="${s}">Liberar</button>
+          </li>
+        `).join('')
         : '<li class="text-muted">Ningún nombre reservado aún. Usa el formulario de arriba o <code>dtunnel reserve mi-api</code>.</li>';
+      ul.querySelectorAll('[data-release]').forEach((btn) => {
+        btn.addEventListener('click', () => releaseSubdomain(btn.dataset.release));
+      });
+      loadTunnels();
     }
 
     document.getElementById('reserve-form').addEventListener('submit', async (e) => {

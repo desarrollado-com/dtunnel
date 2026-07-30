@@ -3,16 +3,20 @@
 ## Hecho (checklist)
 
 - [x] Dominio web: `dtunnel.desarrollado.com`
+- [x] Dominio admin: `dtunnel-admin.desarrollado.com` (sitio estático, plantilla `default`)
 - [x] Dominio instalador: `install.desarrollado.com`
 - [x] Alias: `*.dtunnel.desarrollado.com` (FQDN completo — forma correcta en Hestia)
 - [x] DNS zona con registro `*` → IP del VPS
 - [x] SSL: **Utilizar Let's Encrypt para obtener un certificado SSL** (Hestia gestiona DNS-01 para el comodín)
-- [x] SAN del cert: `dtunnel.desarrollado.com`, `*.dtunnel.desarrollado.com`
+- [x] SAN del cert principal: `dtunnel.desarrollado.com`, `*.dtunnel.desarrollado.com`
+- [x] SSL admin: certificado Let's Encrypt propio en `dtunnel-admin.desarrollado.com`
 
 > En Hestia **no** uses solo `*` en Alias (puede romper el vhost). Usa `*.dtunnel.desarrollado.com`.
 > No hace falta una opción aparte "SSL wildcard": el checkbox estándar de Let's Encrypt basta si el alias wildcard está bien y la zona DNS es la de Hestia.
 
 ## 1. SSL (referencia)
+
+### Dominio principal (`dtunnel.desarrollado.com`)
 
 Si hay que reemitir el cert:
 
@@ -20,6 +24,26 @@ Si hay que reemitir el cert:
 2. Alias: `*.dtunnel.desarrollado.com`
 3. SSL: marcar **Habilitar SSL** + **Utilizar Let's Encrypt para obtener un certificado SSL**
 4. Guardar (Hestia renueva/reemite si cambian los alias)
+
+### Subdominio admin (`dtunnel-admin.desarrollado.com`)
+
+Dominio web independiente (no usa la plantilla proxy `dtunnel`). Document root:
+
+`/home/desarrollado/web/dtunnel-admin.desarrollado.com/public_html`
+
+Si el certificado está vacío o sirve el cert por defecto del servidor:
+
+```bash
+python deploy/fix-admin-ssl.py
+```
+
+O manualmente:
+
+```bash
+v-add-letsencrypt-domain desarrollado dtunnel-admin.desarrollado.com
+v-rebuild-web-domain desarrollado dtunnel-admin.desarrollado.com
+nginx -t && systemctl reload nginx
+```
 
 ## 2. Plantilla proxy Hestia → frp
 
@@ -115,6 +139,7 @@ El script comprueba: `.env`, Docker/frps, puertos 7000/18080, plantillas Hestia,
 | Connection refused :7000 | Firewall o `frps` caído |
 | 404 en subdominio | `frpc` no conectado o nombre distinto al subdominio |
 | LE error 400 | Revisar que Alias sea `*.dtunnel.desarrollado.com` y zona DNS en Hestia |
+| Admin: cert inválido | Falta `v-add-letsencrypt-domain` en `dtunnel-admin.desarrollado.com` |
 
 Logs:
 

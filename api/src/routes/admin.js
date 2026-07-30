@@ -131,6 +131,8 @@ export function createAdminRouter({ authRequired, adminRequired }) {
       email: t.email,
       subdomain: t.subdomain,
       port: t.port,
+      clientIp: t.client_ip,
+      lastHeartbeat: t.last_heartbeat,
       createdAt: t.created_at,
     }));
     res.json({ tunnels });
