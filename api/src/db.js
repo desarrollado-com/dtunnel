@@ -333,6 +333,15 @@ export function updateUser(id, data) {
   return findUserById(id);
 }
 
+export function listUserTunnels(userId) {
+  return db.prepare(`
+    SELECT id, subdomain, port, created_at
+    FROM active_tunnels
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `).all(userId);
+}
+
 export function listActiveTunnels() {
   return db.prepare(`
     SELECT

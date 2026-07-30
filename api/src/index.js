@@ -16,6 +16,7 @@ import {
   subdomainTaken,
   syncAdminUsers,
   listPlans,
+  listUserTunnels,
   publicPlan,
   publicUser,
   verifyPassword,
@@ -157,6 +158,18 @@ app.post('/subdomains/reserve', authRequired, (req, res) => {
     }
     res.status(400).json({ error: e.message });
   }
+});
+
+app.get('/tunnels', authRequired, (req, res) => {
+  const tunnels = listUserTunnels(req.user.userId).map((t) => ({
+    id: t.id,
+    subdomain: t.subdomain,
+    port: t.port,
+    httpUrl: `http://${t.subdomain}.${DOMAIN}`,
+    httpsUrl: `https://${t.subdomain}.${DOMAIN}`,
+    createdAt: t.created_at,
+  }));
+  res.json({ tunnels });
 });
 
 app.post('/tunnels', authOptional, (req, res) => {

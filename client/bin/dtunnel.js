@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 /**
  * dtunnel CLI — expone localhost como URL pública
- * Uso: dtunnel --port 88080
- *      dtunnel --port 3000 --subdomain mi-api
- *      dtunnel login
- *      dtunnel down
  */
 import { spawn, execSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
@@ -16,6 +12,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_DIR = join(homedir(), '.dtunnel');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 const PID_FILE = join(CONFIG_DIR, 'frpc.pid');
+const STATE_FILE = join(CONFIG_DIR, 'tunnel.json');
 const FRPC_CONF = join(CONFIG_DIR, 'frpc.toml');
 
 const DEFAULT_API = 'https://dtunnel.desarrollado.com/api';
@@ -35,17 +32,59 @@ function saveConfig(cfg) {
   writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
 }
 
+function loadTunnelState() {
+  if (!existsSync(STATE_FILE)) return null;
+  try {
+    return JSON.parse(readFileSync(STATE_FILE, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function saveTunnelState(state) {
+  mkdirSync(CONFIG_DIR, { recursive: true });
+  writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+function clearTunnelState() {
+  if (existsSync(STATE_FILE)) unlinkSync(STATE_FILE);
+}
+
+function isPidRunning(pid) {
+  if (!pid) return false;
+  try {
+    process.kill(Number(pid), 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getLocalTunnel() {
+  const state = loadTunnelState();
+  const pid = state?.pid ?? (existsSync(PID_FILE) ? Number(readFileSync(PID_FILE, 'utf8')) : null);
+  if (!isPidRunning(pid)) {
+    if (existsSync(PID_FILE)) unlinkSync(PID_FILE);
+    if (state && !isPidRunning(state.pid)) clearTunnelState();
+    return null;
+  }
+  return { ...state, pid, running: true };
+}
+
 function parseArgs(argv) {
-  const args = { port: null, subdomain: null, cmd: 'up' };
+  const args = { port: null, subdomain: null, cmd: 'up', listWhat: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--port' || a === '-p') args.port = Number(argv[++i]);
     else if (a === '--subdomain' || a === '-s') args.subdomain = argv[++i];
+    else if (a === '--list') { args.cmd = 'list'; args.listWhat = argv[++i]; }
     else if (a === 'login') args.cmd = 'login';
     else if (a === 'down' || a === 'stop') args.cmd = 'down';
     else if (a === 'register') args.cmd = 'register';
+    else if (a === 'status') args.cmd = 'status';
+    else if (a === 'list') { args.cmd = 'list'; args.listWhat = argv[++i] || 'up'; }
     else if (a === 'reserve') { args.cmd = 'reserve'; args.subdomain = argv[++i]; }
-    else if (a === '--help' || a === '-h') args.cmd = 'help';
+    else if (a === '--help' || a === '-h' || a === 'help') args.cmd = 'help';
     else if (!a.startsWith('-') && !args.port) args.port = Number(a);
   }
   return args;
@@ -57,6 +96,8 @@ dtunnel — URL pública para tu servidor local
 
   dtunnel --port <puerto>              Túnel con subdominio aleatorio
   dtunnel --port <puerto> -s <nombre>  Túnel con subdominio reservado
+  dtunnel status                       Estado del túnel local
+  dtunnel --list up                    Listar túneles activos
   dtunnel login                        Iniciar sesión
   dtunnel register                     Crear cuenta
   dtunnel reserve <nombre>             Reservar subdominio (requiere login)
@@ -170,13 +211,9 @@ async function cmdUp(args) {
     process.exit(1);
   }
 
-  if (existsSync(PID_FILE)) {
-    try {
-      const pid = Number(readFileSync(PID_FILE, 'utf8'));
-      process.kill(pid, 0);
-      console.error('Ya hay un túnel activo. Ejecuta: dtunnel down');
-      process.exit(1);
-    } catch { /* stale pid */ }
+  if (getLocalTunnel()) {
+    console.error('Ya hay un túnel activo. Ejecuta: dtunnel down');
+    process.exit(1);
   }
 
   writeFrpcToml({
@@ -190,6 +227,15 @@ async function cmdUp(args) {
   const child = spawn(frpc, ['-c', FRPC_CONF], { stdio: 'ignore', detached: true });
   child.unref();
   writeFileSync(PID_FILE, String(child.pid));
+  saveTunnelState({
+    pid: child.pid,
+    subdomain: data.subdomain,
+    port: args.port,
+    httpUrl: data.httpUrl,
+    httpsUrl: data.httpsUrl,
+    host: data.host || `${data.subdomain}.${DEFAULT_DOMAIN}`,
+    startedAt: new Date().toISOString(),
+  });
 
   console.log('');
   console.log(`${data.httpUrl}  ⟶  http://localhost:${args.port}`);
@@ -199,13 +245,80 @@ async function cmdUp(args) {
 }
 
 function cmdDown() {
-  if (existsSync(PID_FILE)) {
+  const local = getLocalTunnel();
+  if (local?.pid) {
+    try { process.kill(local.pid); } catch { /* ignore */ }
+  } else if (existsSync(PID_FILE)) {
     const pid = Number(readFileSync(PID_FILE, 'utf8'));
     try { process.kill(pid); } catch { /* ignore */ }
-    unlinkSync(PID_FILE);
   }
+  if (existsSync(PID_FILE)) unlinkSync(PID_FILE);
   if (existsSync(FRPC_CONF)) unlinkSync(FRPC_CONF);
+  clearTunnelState();
   console.log('Túnel detenido');
+}
+
+function cmdStatus() {
+  const cfg = loadConfig();
+  const local = getLocalTunnel();
+
+  if (!local) {
+    console.log('Sin túnel activo en esta máquina.');
+    if (cfg.email) console.log(`Sesión: ${cfg.email}`);
+    return;
+  }
+
+  console.log('Túnel activo');
+  console.log(`  Subdominio: ${local.subdomain}`);
+  console.log(`  Host:       ${local.host || `${local.subdomain}.${DEFAULT_DOMAIN}`}`);
+  console.log(`  Puerto:     localhost:${local.port}`);
+  if (local.httpUrl) console.log(`  HTTP:       ${local.httpUrl}`);
+  if (local.httpsUrl) console.log(`  HTTPS:      ${local.httpsUrl}`);
+  console.log(`  PID frpc:   ${local.pid}`);
+  if (local.startedAt) console.log(`  Desde:      ${local.startedAt}`);
+  if (cfg.email) console.log(`  Sesión:     ${cfg.email}`);
+}
+
+async function cmdList(what) {
+  if (what !== 'up') {
+    console.error('Uso: dtunnel --list up');
+    process.exit(1);
+  }
+
+  const local = getLocalTunnel();
+  const cfg = loadConfig();
+  let remote = [];
+
+  if (cfg.token) {
+    try {
+      const data = await apiFetch('/tunnels');
+      remote = data.tunnels || [];
+    } catch (err) {
+      console.error(`No se pudo consultar la cuenta: ${err.message}`);
+    }
+  }
+
+  if (!local && remote.length === 0) {
+    console.log('No hay túneles activos.');
+    if (!cfg.token) console.log('Inicia sesión con dtunnel login para ver túneles de tu cuenta.');
+    return;
+  }
+
+  if (local) {
+    console.log('LOCAL');
+    console.log(`  ${local.subdomain.padEnd(16)} localhost:${local.port}  ${local.httpsUrl || ''}`);
+  }
+
+  if (remote.length > 0) {
+    console.log(local ? '\nCUENTA' : 'CUENTA');
+    for (const t of remote) {
+      const marker = local?.subdomain === t.subdomain ? '*' : ' ';
+      console.log(`${marker} ${t.subdomain.padEnd(16)} localhost:${t.port}  ${t.httpsUrl}`);
+    }
+    if (local) {
+      console.log('\n* = también activo en esta máquina');
+    }
+  }
 }
 
 const args = parseArgs(process.argv);
@@ -216,6 +329,8 @@ switch (args.cmd) {
   case 'register': await cmdRegister(); break;
   case 'reserve': await cmdReserve(args.subdomain); break;
   case 'down': cmdDown(); break;
+  case 'status': cmdStatus(); break;
+  case 'list': await cmdList(args.listWhat); break;
   case 'up': await cmdUp(args); break;
   default: usage(); process.exit(1);
 }
