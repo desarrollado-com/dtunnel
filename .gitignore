@@ -1,0 +1,19 @@
+# Secrets y runtime
+.env
+api/.env
+server/.env
+api/data/
+api/node_modules/
+client/node_modules/
+*.runtime.toml
+frps.runtime.json
+frpc.toml
+.dtunnel.pid
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/

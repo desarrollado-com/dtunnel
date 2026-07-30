@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# dtunnel — instalador universal (Linux, macOS, WSL)
+# Uso:
+#   curl -fsSL https://install.desarrollado.com/dtunnel/install | sudo bash
+#   curl -O https://install.desarrollado.com/dtunnel/install && sudo bash install
+#
+# Auditar antes de ejecutar:
+#   curl -fsSL https://install.desarrollado.com/dtunnel/install
+#
+set -euo pipefail
+
+DTUNNEL_VERSION="${DTUNNEL_VERSION:-1.0.0}"
+FRP_VERSION="${FRP_VERSION:-0.61.1}"
+INSTALL_BASE="${DTUNNEL_INSTALL_URL:-https://install.desarrollado.com/dtunnel}"
+# Espejo si install.desarrollado.com aún no resuelve:
+FALLBACK_BASE="${DTUNNEL_INSTALL_FALLBACK:-https://dtunnel.desarrollado.com/install/dtunnel}"
+
+BIN_DIR="${DTUNNEL_BIN_DIR:-/usr/local/bin}"
+USE_SUDO=""
+
+info()  { echo "==> $*"; }
+warn()  { echo "WARN: $*" >&2; }
+die()   { echo "ERROR: $*" >&2; exit 1; }
+
+need_sudo() {
+  if [ "$(id -u)" -ne 0 ]; then
+    if command -v sudo >/dev/null 2>&1; then
+      USE_SUDO="sudo"
+    else
+      BIN_DIR="${HOME}/.local/bin"
+      mkdir -p "$BIN_DIR"
+      warn "Sin sudo: instalando en ${BIN_DIR} (añádelo a PATH si hace falta)"
+    fi
+  fi
+}
+
+detect_platform() {
+  local os arch
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64|amd64) arch="amd64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    armv7l|armv6l) arch="arm" ;;
+    i386|i686) arch="386" ;;
+    *) die "Arquitectura no soportada: $arch" ;;
+  esac
+  case "$os" in
+    linux)  os="linux" ;;
+    darwin) os="darwin" ;;
+    *) die "Sistema no soportado: $os (usa npm install -g @desarrollado/dtunnel en Windows)" ;;
+  esac
+  PLATFORM="${os}_${arch}"
+}
+
+download() {
+  local url="$1" dest="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$url" -o "$dest"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$dest" "$url"
+  else
+    die "Se requiere curl o wget"
+  fi
+}
+
+fetch_script() {
+  local name="$1" dest="$2"
+  if download "${INSTALL_BASE}/${name}" "$dest" 2>/dev/null; then
+    return 0
+  fi
+  warn "No se pudo descargar desde ${INSTALL_BASE}; probando espejo..."
+  download "${FALLBACK_BASE}/${name}" "$dest"
+}
+
+install_frpc() {
+  info "Descargando frpc ${FRP_VERSION} (${PLATFORM})"
+  download "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${ARCHIVE}.tar.gz" "${WORKDIR}/frp.tar.gz"
+  tar -xzf "${WORKDIR}/frp.tar.gz" -C "${WORKDIR}"
+
+  local frpc_bin="${WORKDIR}/${ARCHIVE}/frpc"
+  [ -f "$frpc_bin" ] || die "frpc no encontrado en el archivo"
+
+  $USE_SUDO install -m 755 "$frpc_bin" "${BIN_DIR}/frpc"
+  info "frpc instalado en ${BIN_DIR}/frpc"
+}
+
+install_dtunnel_cli() {
+  local tmp="${WORKDIR}/dtunnel-cli"
+  fetch_script "dtunnel" "$tmp"
+  $USE_SUDO install -m 755 "$tmp" "${BIN_DIR}/dtunnel"
+  info "dtunnel instalado en ${BIN_DIR}/dtunnel"
+}
+
+verify() {
+  command -v frpc >/dev/null    || die "frpc no está en PATH"
+  command -v dtunnel >/dev/null   || die "dtunnel no está en PATH"
+  command -v python3 >/dev/null   || warn "python3 no encontrado (necesario para login/register)"
+  frpc --version 2>/dev/null | head -1 || true
+  echo ""
+  echo "Instalación completada."
+  echo ""
+  echo "  dtunnel --port 88080"
+  echo ""
+  echo "Documentación: https://dtunnel.desarrollado.com/docs.html"
+}
+
+main() {
+  echo "dtunnel installer v${DTUNNEL_VERSION}"
+  WORKDIR="$(mktemp -d)"
+  trap 'rm -rf "$WORKDIR"' EXIT
+  ARCHIVE="frp_${FRP_VERSION}_${PLATFORM}"
+  need_sudo
+  detect_platform
+  install_frpc
+  install_dtunnel_cli
+  verify
+}
+
+main "$@"

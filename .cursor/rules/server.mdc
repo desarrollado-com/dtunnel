@@ -1,0 +1,14 @@
+---
+description: Convenciones del broker frps en server/
+globs: server/**/*
+alwaysApply: false
+---
+
+# Server (frps)
+
+- Config plantilla: `frps.toml` con `__FRPS_TOKEN__`; runtime en `frps.runtime.toml` (gitignored).
+- Siempre usar `install.sh` para generar runtime y `docker compose up`.
+- `vhostHTTPPort = 8080` — Nginx Hestia hace proxy TLS → este puerto.
+- `subDomainHost = "dtunnel.desarrollado.com"`.
+- `bindPort = 7000` — abrir en firewall del VPS para clientes frpc.
+- No exponer `webServer` (7500) a internet sin cambiar password por defecto.

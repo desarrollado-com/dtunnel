@@ -1,0 +1,5 @@
+# API
+node_modules/
+data/
+.env
+*.db

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dtunnel — URL pública para tu localhost</title>
+  <meta name="description" content="Expón tu servidor local a Internet con una URL HTTPS. Sin configurar router ni firewall.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <a href="/" class="logo">dtunnel</a>
+    <nav class="nav">
+      <a href="#comenzar">Comenzar</a>
+      <a href="/docs.html">Documentación</a>
+      <a href="#ayuda">Obtener ayuda</a>
+      <a href="https://github.com/desarrollado-com/dtunnel" target="_blank" rel="noopener">Código abierto</a>
+      <a href="#precios">Precios</a>
+      <a href="#contacto">Contacto</a>
+      <a href="https://github.com/desarrollado-com/dtunnel" target="_blank" rel="noopener">GitHub</a>
+      <a href="/register.html" class="btn btn-ghost">Registrarse</a>
+      <a href="/login.html" class="btn btn-primary">Iniciar sesión</a>
+    </nav>
+    <button class="menu-toggle" aria-label="Menú">☰</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-content">
+        <h1>Tu localhost,<br><span class="gradient">visible en Internet</span></h1>
+        <p class="lead">
+          Proxy inverso seguro para desarrolladores. HTTP, HTTPS, JSON, imágenes y WebSocket —
+          funciona detrás de NAT, VPN o red corporativa sin abrir puertos.
+        </p>
+        <div class="terminal">
+          <code>$ dtunnel --port 88080</code>
+          <code class="dim">https://a7f3c2.dtunnel.desarrollado.com ⟶ http://localhost:88080</code>
+        </div>
+        <div class="hero-actions">
+          <a href="#comenzar" class="btn btn-primary btn-lg">Comenzar gratis</a>
+          <a href="/docs.html" class="btn btn-ghost btn-lg">Ver documentación</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="comenzar" class="section">
+      <h2>Comenzar en 2 minutos</h2>
+      <ol class="steps">
+        <li>
+          <strong>Instala dtunnel</strong>
+          <p>Linux, macOS o WSL — un solo comando (incluye <code>frpc</code>):</p>
+          <pre><code>curl -O https://install.desarrollado.com/dtunnel/install && sudo bash install</code></pre>
+          <p style="margin-top:.5rem;color:var(--muted)">Windows sin WSL: <code>npm install -g @desarrollado/dtunnel</code> (requiere Node 16+ y <code>frpc</code> aparte)</p>
+        </li>
+        <li>
+          <strong>Levanta tu app y abre el túnel</strong>
+          <pre><code>python -m http.server 88080   # en otra terminal
+dtunnel --port 88080</code></pre>
+        </li>
+      </ol>
+      <p style="margin-top:1rem;color:var(--muted)">
+        Guía completa: <a href="/docs.html#inicio-rapido">documentación → Inicio rápido</a>
+      </p>
+    </section>
+
+    <section class="section features">
+      <h2>Funciona con todo</h2>
+      <div class="grid">
+        <article><h3>Node / React / Vite</h3><p>Dev servers en cualquier puerto.</p></article>
+        <article><h3>Docker / K8s</h3><p>Contenedores con puerto mapeado a localhost.</p></article>
+        <article><h3>Nginx / APIs</h3><p>REST, JSON, archivos estáticos.</p></article>
+        <article><h3>WebSocket</h3><p>WSS a través del túnel sin config extra.</p></article>
+      </div>
+    </section>
+
+    <section id="precios" class="section pricing">
+      <h2>Precios</h2>
+      <div class="grid pricing-grid">
+        <article class="card">
+          <h3>Gratis</h3>
+          <p class="price">$0</p>
+          <ul>
+            <li>URL aleatoria</li>
+            <li>1 túnel simultáneo</li>
+            <li>HTTP + HTTPS</li>
+          </ul>
+        </article>
+        <article class="card card-featured">
+          <h3>Registrado</h3>
+          <p class="price">Gratis</p>
+          <ul>
+            <li>Subdominio persistente</li>
+            <li>Hasta 5 túneles</li>
+            <li>Reserva de nombres</li>
+          </ul>
+          <a href="/register.html" class="btn btn-primary">Crear cuenta</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="ayuda" class="section">
+      <h2>Obtener ayuda</h2>
+      <p>
+        Consulta la <a href="/docs.html">documentación</a> (instalación, CLI, API, Docker, problemas frecuentes),
+        abre un issue en <a href="https://github.com/desarrollado-com/dtunnel" target="_blank" rel="noopener">GitHub</a>
+        o escríbenos a <a href="mailto:dtunnel@desarrollado.com">dtunnel@desarrollado.com</a>.
+      </p>
+      <p><a href="/docs.html#problemas" class="btn btn-ghost">Ver solución de problemas</a></p>
+    </section>
+
+    <section id="contacto" class="section">
+      <h2>Contacto</h2>
+      <p>Email: <a href="mailto:dtunnel@desarrollado.com">dtunnel@desarrollado.com</a></p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>dtunnel — código abierto · <a href="https://desarrollado.com">desarrollado.com</a></p>
+  </footer>
+  <script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentación — dtunnel</title>
+  <meta name="description" content="Guía completa de dtunnel: instalación, CLI, cuentas, API, Docker, WebSocket y solución de problemas.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <a href="/" class="logo">dtunnel</a>
+    <nav class="nav">
+      <a href="/">Inicio</a>
+      <a href="/docs.html">Documentación</a>
+      <a href="/register.html">Registrarse</a>
+      <a href="/login.html">Iniciar sesión</a>
+    </nav>
+    <button class="menu-toggle" aria-label="Menú">☰</button>
+  </header>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+      <p class="docs-sidebar-title">Contenido</p>
+      <nav class="docs-toc">
+        <a href="#introduccion">Introducción</a>
+        <a href="#requisitos">Requisitos</a>
+        <a href="#instalacion">Instalación</a>
+        <a href="#inicio-rapido">Inicio rápido</a>
+        <a href="#cli">Referencia CLI</a>
+        <a href="#cuentas">Cuentas y subdominios</a>
+        <a href="#casos-uso">Casos de uso</a>
+        <a href="#api">API REST</a>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#limites">Límites y planes</a>
+        <a href="#variables">Variables de entorno</a>
+        <a href="#problemas">Solución de problemas</a>
+        <a href="#seguridad">Seguridad</a>
+      </nav>
+    </aside>
+
+    <main class="section docs docs-main">
+      <h1>Documentación</h1>
+      <p class="lead docs-intro">
+        <strong>dtunnel</strong> expone un servidor web en tu máquina local como una URL pública HTTPS bajo
+        <code>*.dtunnel.desarrollado.com</code>. No necesitas abrir puertos en el router ni configurar DNS.
+      </p>
+
+      <!-- Introducción -->
+      <section id="introduccion" class="docs-section">
+        <h2>Introducción</h2>
+        <p>
+          dtunnel es un túnel HTTP/HTTPS tipo ngrok o Tunnelmole, alojado en
+          <code>dtunnel.desarrollado.com</code>. Tu aplicación sigue escuchando en
+          <code>localhost</code>; el cliente <code>dtunnel</code> mantiene una conexión saliente hacia el servidor
+          y enruta el tráfico de Internet hacia tu proceso local.
+        </p>
+        <p>Funciona con cualquier stack que escuche en un puerto TCP local:</p>
+        <ul class="docs-list">
+          <li>Servidores de desarrollo: Vite, Next.js, Create React App, Flask, Django, etc.</li>
+          <li>APIs REST y GraphQL</li>
+          <li>Contenedores Docker con <code>-p 8080:80</code> mapeado a localhost</li>
+          <li>Nginx o Apache en tu máquina</li>
+          <li>WebSockets (WSS) a través del túnel HTTPS</li>
+        </ul>
+        <div class="docs-callout">
+          <strong>Conexión saliente únicamente.</strong> El cliente abre conexión hacia el VPS (puerto 7000).
+          Por eso funciona detrás de NAT, firewall corporativo o VPN sin reglas especiales.
+        </div>
+      </section>
+
+      <!-- Requisitos -->
+      <section id="requisitos" class="docs-section">
+        <h2>Requisitos</h2>
+        <table class="docs-table">
+          <thead>
+            <tr><th>Componente</th><th>Versión mínima</th><th>Notas</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Node.js</strong></td><td>18+</td><td>Para el CLI <code>dtunnel</code></td></tr>
+            <tr><td><strong>frpc</strong></td><td>0.61.x</td><td>Cliente del broker frp (<a href="https://github.com/fatedier/frp/releases">releases</a>)</td></tr>
+            <tr><td><strong>Servidor local</strong></td><td>—</td><td>Cualquier app en <code>127.0.0.1:PUERTO</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Instalación -->
+      <section id="instalacion" class="docs-section">
+        <h2>Instalación</h2>
+
+        <h3>Instalador universal (Linux, macOS y WSL)</h3>
+        <p>Este método instala automáticamente la versión correcta de <code>frpc</code> y el CLI
+          <code>dtunnel</code> para tu sistema. No requiere Node.js.</p>
+        <pre><code>curl -O https://install.desarrollado.com/dtunnel/install && sudo bash install</code></pre>
+        <p>Opcionalmente, audita el script antes de ejecutarlo:</p>
+        <pre><code>curl https://install.desarrollado.com/dtunnel/install</code></pre>
+        <p>Si <code>install.desarrollado.com</code> aún no resuelve en tu red, usa el espejo:</p>
+        <pre><code>curl -O https://dtunnel.desarrollado.com/install/dtunnel/install && sudo bash install</code></pre>
+
+        <h3>Instalar con Node.js</h3>
+        <p>La mejor opción para desarrolladores Node.js/JavaScript/TypeScript o Windows sin WSL.
+          Requiere Node.js 16 o superior. Debes instalar <code>frpc</code> por separado desde
+          <a href="https://github.com/fatedier/frp/releases" target="_blank" rel="noopener">frp releases</a>.</p>
+        <pre><code>npm install -g @desarrollado/dtunnel</code></pre>
+        <p>Comprueba la instalación:</p>
+        <pre><code>dtunnel --help</code></pre>
+      </section>
+
+      <!-- Inicio rápido -->
+      <section id="inicio-rapido" class="docs-section">
+        <h2>Inicio rápido</h2>
+        <ol class="steps">
+          <li>
+            <strong>Levanta tu app local</strong> en un puerto, por ejemplo <code>88080</code>:
+            <pre><code>python -m http.server 88080
+# o: npm run dev  →  suele ser puerto 3000, 5173, etc.</code></pre>
+          </li>
+          <li>
+            <strong>Abre el túnel</strong> (URL aleatoria, plan gratuito):
+            <pre><code>dtunnel --port 88080</code></pre>
+            <p>Salida esperada:</p>
+            <pre><code>https://a7f3c2.dtunnel.desarrollado.com  ⟶  http://localhost:88080
+http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre>
+          </li>
+          <li>
+            <strong>Prueba</strong> desde el navegador o con curl:
+            <pre><code>curl -I https://a7f3c2.dtunnel.desarrollado.com</code></pre>
+          </li>
+          <li>
+            <strong>Detén</strong> el túnel cuando termines:
+            <pre><code>dtunnel down</code></pre>
+          </li>
+        </ol>
+        <div class="docs-callout docs-callout-warn">
+          El puerto de <code>dtunnel --port</code> debe coincidir con el puerto donde escucha tu aplicación local.
+          Si Vite usa <code>5173</code>, ejecuta <code>dtunnel --port 5173</code>.
+        </div>
+      </section>
+
+      <!-- CLI -->
+      <section id="cli" class="docs-section">
+        <h2>Referencia CLI</h2>
+        <table class="docs-table">
+          <thead>
+            <tr><th>Comando</th><th>Descripción</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dtunnel --port &lt;N&gt;</code></td>
+              <td>Túnel con subdominio aleatorio (gratis). Alias: <code>dtunnel &lt;N&gt;</code></td>
+            </tr>
+            <tr>
+              <td><code>dtunnel -p 3000 -s mi-api</code></td>
+              <td>Túnel con subdominio reservado (requiere cuenta y <code>reserve</code> previo)</td>
+            </tr>
+            <tr>
+              <td><code>dtunnel register</code></td>
+              <td>Crear cuenta (email + contraseña mín. 8 caracteres)</td>
+            </tr>
+            <tr>
+              <td><code>dtunnel login</code></td>
+              <td>Iniciar sesión; guarda token en <code>~/.dtunnel/config.json</code></td>
+            </tr>
+            <tr>
+              <td><code>dtunnel reserve &lt;nombre&gt;</code></td>
+              <td>Reservar subdominio persistente (ej. <code>mi-api</code> → <code>mi-api.dtunnel.desarrollado.com</code>)</td>
+            </tr>
+            <tr>
+              <td><code>dtunnel down</code></td>
+              <td>Detener el proceso <code>frpc</code> local</td>
+            </tr>
+            <tr>
+              <td><code>dtunnel --help</code></td>
+              <td>Ayuda resumida</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>Archivos locales del cliente:</p>
+        <ul class="docs-list">
+          <li><code>~/.dtunnel/config.json</code> — token de sesión (si hiciste login)</li>
+          <li><code>~/.dtunnel/frpc.toml</code> — configuración generada al abrir túnel</li>
+          <li><code>~/.dtunnel/frpc.pid</code> — PID del proceso frpc activo</li>
+        </ul>
+      </section>
+
+      <!-- Cuentas -->
+      <section id="cuentas" class="docs-section">
+        <h2>Cuentas y subdominios persistentes</h2>
+        <p>
+          Sin cuenta obtienes una <strong>URL aleatoria</strong> cada vez que ejecutas <code>dtunnel --port</code>.
+          Con cuenta puedes <strong>reservar un nombre</strong> y reutilizarlo en cada sesión.
+        </p>
+
+        <h3>Flujo con cuenta</h3>
+        <pre><code># 1. Crear cuenta (CLI o web en /register.html)
+dtunnel register
+
+# 2. Reservar nombre (3–32 caracteres: a-z, 0-9, guión)
+dtunnel reserve mi-api
+
+# 3. Usar siempre el mismo subdominio
+dtunnel --port 3000 --subdomain mi-api
+# → https://mi-api.dtunnel.desarrollado.com</code></pre>
+
+        <p>También puedes gestionar subdominios desde el panel web tras <a href="/login.html">iniciar sesión</a>.</p>
+
+        <h3>Reglas de nombres</h3>
+        <ul class="docs-list">
+          <li>Longitud: 3–32 caracteres</li>
+          <li>Solo letras minúsculas, números y guiones</li>
+          <li>Reservados: <code>www</code>, <code>api</code>, <code>admin</code>, <code>mail</code>, etc.</li>
+          <li>Primero en reservar gana el nombre (mientras la cuenta esté activa)</li>
+        </ul>
+      </section>
+
+      <!-- Casos de uso -->
+      <section id="casos-uso" class="docs-section">
+        <h2>Casos de uso</h2>
+
+        <h3>React / Vite / Next.js</h3>
+        <pre><code>npm run dev          # anota el puerto (ej. 5173)
+dtunnel --port 5173</code></pre>
+
+        <h3>Node.js / Express</h3>
+        <pre><code>node server.js       # escucha en 3000
+dtunnel --port 3000</code></pre>
+
+        <h3>Docker</h3>
+        <p>Publica el puerto en <code>localhost</code> y tunela ese puerto:</p>
+        <pre><code>docker run -p 8080:80 nginx:alpine
+dtunnel --port 8080</code></pre>
+
+        <h3>Webhooks (Stripe, GitHub, IFTTT…)</h3>
+        <p>
+          Configura la URL del webhook como <code>https://&lt;tu-sub&gt;.dtunnel.desarrollado.com/ruta</code>.
+          El proveedor enviará POST/GET a tu app local a través del túnel.
+        </p>
+
+        <h3>Probar en móvil o con un compañero</h3>
+        <p>
+          Comparte la URL HTTPS que imprime el CLI. Cualquier dispositivo con Internet puede acceder
+          mientras el túnel esté activo en tu máquina.
+        </p>
+
+        <h3>WebSocket (WSS)</h3>
+        <p>
+          Las apps que usan <code>wss://</code> sobre la misma URL HTTP funcionan sin configuración adicional
+          en el cliente dtunnel; el tráfico pasa por el túnel HTTPS.
+        </p>
+      </section>
+
+      <!-- API -->
+      <section id="api" class="docs-section">
+        <h2>API REST</h2>
+        <p>Base URL: <code>https://dtunnel.desarrollado.com/api</code></p>
+
+        <h3>Salud del servicio</h3>
+        <pre><code>GET /api/health
+# → { "ok": true, "service": "dtunnel-api" }</code></pre>
+
+        <h3>Registro e inicio de sesión</h3>
+        <pre><code>POST /api/auth/register
+Content-Type: application/json
+{ "email": "tu@email.com", "password": "minimo8chars" }
+
+POST /api/auth/login
+{ "email": "tu@email.com", "password": "..." }
+# → { "token": "...", "email": "..." }</code></pre>
+
+        <h3>Crear túnel</h3>
+        <pre><code>POST /api/tunnels
+Content-Type: application/json
+{ "port": 88080 }
+
+# Con cuenta (header Authorization: Bearer &lt;token&gt;)
+{ "port": 3000, "subdomain": "mi-api" }
+
+# Respuesta
+{
+  "subdomain": "a7f3c2",
+  "httpUrl": "http://a7f3c2.dtunnel.desarrollado.com",
+  "httpsUrl": "https://a7f3c2.dtunnel.desarrollado.com",
+  "server": "dtunnel.desarrollado.com",
+  "serverPort": 7000,
+  "token": "...",
+  "persistent": false
+}</code></pre>
+
+        <h3>Reservar subdominio</h3>
+        <pre><code>POST /api/subdomains/reserve
+Authorization: Bearer &lt;token&gt;
+{ "name": "mi-api" }
+
+GET /api/me
+Authorization: Bearer &lt;token&gt;
+# → { "email": "...", "subdomains": ["mi-api"] }</code></pre>
+      </section>
+
+      <!-- Cómo funciona -->
+      <section id="como-funciona" class="docs-section">
+        <h2>Cómo funciona</h2>
+        <pre class="docs-diagram"><code>Internet
+   │
+   ▼ HTTPS (443)
+┌──────────────────────────────────────┐
+│ VPS — Nginx (Hestia)                 │
+│   dtunnel.desarrollado.com → web/API │
+│   *.dtunnel.desarrollado.com → frps  │
+└──────────────┬───────────────────────┘
+               │ TCP 7000
+               ▼
+        Tu PC — frpc + dtunnel CLI
+               │
+               ▼
+        localhost:PUERTO (tu app)</code></pre>
+        <ol class="docs-list">
+          <li>El CLI pide un subdominio a la API y lanza <code>frpc</code>.</li>
+          <li><code>frpc</code> se conecta al broker (puerto 7000) con autenticación por token.</li>
+          <li>Un visitante abre <code>https://nombre.dtunnel.desarrollado.com</code>.</li>
+          <li>Nginx termina TLS y reenvía a <code>frps</code>, que enruta al túnel activo.</li>
+          <li><code>frpc</code> reenvía la petición a <code>127.0.0.1:PUERTO</code>.</li>
+        </ol>
+      </section>
+
+      <!-- Límites -->
+      <section id="limites" class="docs-section">
+        <h2>Límites y planes</h2>
+        <table class="docs-table">
+          <thead>
+            <tr><th></th><th>Gratis (anónimo)</th><th>Registrado</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>URL</td><td>Aleatoria cada sesión</td><td>Subdominio reservado fijo</td></tr>
+            <tr><td>Túneles simultáneos</td><td>1</td><td>Hasta 5</td></tr>
+            <tr><td>Subdominio custom</td><td>No</td><td>Sí (tras <code>reserve</code>)</td></tr>
+            <tr><td>HTTPS</td><td>Sí</td><td>Sí</td></tr>
+            <tr><td>Cuenta requerida</td><td>No</td><td>Sí (gratis)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Variables -->
+      <section id="variables" class="docs-section">
+        <h2>Variables de entorno</h2>
+        <table class="docs-table">
+          <thead>
+            <tr><th>Variable</th><th>Default</th><th>Descripción</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>DTUNNEL_API_URL</code></td>
+              <td><code>https://dtunnel.desarrollado.com/api</code></td>
+              <td>URL base de la API (solo si usas otro entorno)</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>El token de sesión y credenciales frp los gestiona el CLI; no hace falta exportar <code>DTUNNEL_TOKEN</code> manualmente.</p>
+      </section>
+
+      <!-- Problemas -->
+      <section id="problemas" class="docs-section">
+        <h2>Solución de problemas</h2>
+
+        <h3><code>Instala frpc</code> al ejecutar dtunnel</h3>
+        <p><code>frpc</code> no está en PATH. En Linux/macOS/WSL usa el instalador curl (instala frpc automáticamente) o descarga manualmente desde <a href="https://github.com/fatedier/frp/releases">frp releases</a> y verifica con <code>frpc --version</code>.</p>
+
+        <h3>502 Bad Gateway en la URL pública</h3>
+        <ul class="docs-list">
+          <li>Comprueba que <code>dtunnel --port</code> sigue en ejecución (no cerraste la terminal sin <code>down</code>).</li>
+          <li>Verifica que tu app local responde: <code>curl http://127.0.0.1:PUERTO</code></li>
+          <li>El puerto del CLI debe coincidir con el de tu app.</li>
+        </ul>
+
+        <h3>404 en el subdominio</h3>
+        <ul class="docs-list">
+          <li>El túnel no está activo o el subdominio no coincide con el de <code>dtunnel up</code>.</li>
+          <li>Con <code>--subdomain</code>, el nombre debe estar reservado en tu cuenta.</li>
+        </ul>
+
+        <h3><code>Connection refused</code> al conectar frpc</h3>
+        <ul class="docs-list">
+          <li>Firewall bloqueando salida TCP al puerto 7000 del servidor.</li>
+          <li>Red corporativa que bloquea conexiones salientes no estándar.</li>
+        </ul>
+
+        <h3><code>Límite de túneles alcanzado</code></h3>
+        <p>Ejecuta <code>dtunnel down</code> antes de abrir otro. Plan gratuito: 1 túnel; registrado: hasta 5.</p>
+
+        <h3>La URL no carga desde otro dispositivo</h3>
+        <ul class="docs-list">
+          <li>Usa la URL <strong>HTTPS</strong> que muestra el CLI.</li>
+          <li>El túnel solo existe mientras tu PC ejecuta <code>frpc</code> (no es hosting permanente en plan gratuito).</li>
+        </ul>
+
+        <h3>Más ayuda</h3>
+        <p>
+          Email: <a href="mailto:dtunnel@desarrollado.com">dtunnel@desarrollado.com</a> ·
+          <a href="/#ayuda">Obtener ayuda</a> ·
+          <a href="https://github.com/desarrollado-com/dtunnel" target="_blank" rel="noopener">GitHub</a>
+        </p>
+      </section>
+
+      <!-- Seguridad -->
+      <section id="seguridad" class="docs-section">
+        <h2>Seguridad</h2>
+        <ul class="docs-list">
+          <li>Las URLs públicas son accesibles por cualquiera que conozca el enlace (como ngrok/Tunnelmole).</li>
+          <li>No expongas servicios de administración sin autenticación propia.</li>
+          <li>Usa HTTPS en la URL pública; el tráfico viaja cifrado hasta el VPS.</li>
+          <li>Con cuenta registrada, solo tú puedes usar subdominios que hayas reservado.</li>
+          <li>Cierra el túnel con <code>dtunnel down</code> cuando no lo necesites.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>dtunnel — <a href="/">Inicio</a> · <a href="/docs.html">Documentación</a> · <a href="https://desarrollado.com">desarrollado.com</a></p>
+  </footer>
+  <script src="/js/main.js"></script>
+  <script src="/js/docs.js"></script>
+</body>
+</html>

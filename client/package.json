@@ -1,0 +1,39 @@
+{
+  "name": "@desarrollado/dtunnel",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "1.0.0",
+  "description": "Expón tu localhost como URL pública HTTPS en dtunnel.desarrollado.com",
+  "type": "module",
+  "bin": {
+    "dtunnel": "bin/dtunnel.js"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "keywords": [
+    "tunnel",
+    "ngrok",
+    "localhost",
+    "reverse-proxy",
+    "frp",
+    "dtunnel"
+  ],
+  "homepage": "https://dtunnel.desarrollado.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/desarrollado-com/dtunnel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/desarrollado-com/dtunnel/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "start": "node bin/dtunnel.js"
+  }
+}

@@ -1,0 +1,107 @@
+# Plan de producto dtunnel
+
+Servicio self-hosted tipo [Tunnelmole](https://github.com/robbie-cahill/tunnelmole-client): URL pública para un servidor web local, sin abrir puertos en el router. Soporta HTTP, HTTPS, assets estáticos, JSON y WebSocket (WSS).
+
+## Dominios
+
+
+| Host                         | Uso                                |
+| ---------------------------- | ---------------------------------- |
+| `dtunnel.desarrollado.com`   | Landing, docs, login, API `/api/*` |
+| `install.desarrollado.com`   | Instalador curl (`/dtunnel/install`) |
+| `*.dtunnel.desarrollado.com` | Túneles activos                      |
+
+
+**Ruta web Hestia:** `/home/desarrollado/web/dtunnel.desarrollado.com/public_html`
+
+## Arquitectura
+
+```
+Internet → Nginx (Hestia, TLS wildcard)
+              ├─ apex → public_html + /api → API Node
+              └─ *.dtunnel → frps :18080 ← frpc ← localhost:PORT
+```
+
+
+| Capa     | Tecnología                      |
+| -------- | ------------------------------- |
+| Broker   | frp (`frps` / `frpc`)           |
+| Edge TLS | Hestia + Let's Encrypt wildcard |
+| API      | Node.js + SQLite                |
+| CLI      | Node.js (`@desarrollado/dtunnel`) + bash (instalador curl) |
+| Web      | HTML/CSS estático en `web/`     |
+
+
+
+
+## Experiencia de usuario
+
+
+
+### Gratis (anónimo)
+
+```bash
+dtunnel --port 88080
+```
+
+→ `https://q9iga6.dtunnel.desarrollado.com` (subdominio aleatorio, 1 túnel, sin reserva).
+
+### Registrado
+
+```bash
+dtunnel login
+dtunnel --port 88080 --subdomain mi-api
+```
+
+→ URL persistente `https://mi-api.dtunnel.desarrollado.com`.
+
+## Roadmap
+
+
+| Fase | Entregable                                     | Estado |
+| ---- | ---------------------------------------------- | ------ |
+| 0    | DNS, SSL, plantillas Hestia                    | Hecho  |
+| 1    | frps, nginx split, CLI aleatorio               | Hecho  |
+| 2    | Landing `public_html`                          | Hecho  |
+| 3    | API auth + subdominios reservados              | Hecho  |
+| 4    | Instalador curl + npm `@desarrollado/dtunnel`  | Hecho  |
+| 5    | Dashboard, límites por plan, billing           | Futuro |
+
+
+
+
+## Modelo free vs registrado
+
+
+|                     | Gratis        | Registrado           |
+| ------------------- | ------------- | -------------------- |
+| URL                 | Aleatoria     | Fija (reservada)     |
+| Túneles simultáneos | 1             | 5                    |
+| Subdominio custom   | No            | Sí                   |
+| Caducidad           | Al cerrar CLI | Mientras plan activo |
+
+
+
+
+## Decisiones técnicas
+
+- **Transporte:** frp (no reimplementar WebSocket propio).
+- **Puerto frps vhost:** `18080` (Apache Hestia usa `8080`).
+- **Plantilla nginx:** dos bloques `server` — apex → Apache, wildcard → frps.
+- **Secrets:** `secretos/.env.dtunnel` (nunca en git).
+
+
+
+## Estructura del repo
+
+```
+dtunnel/
+├── api/              # Auth, túneles, subdominios
+├── client/           # CLI npm @desarrollado/dtunnel
+├── install/dtunnel/  # Instalador curl
+├── web/              # Landing → public_html
+├── server/           # frps + plantillas Hestia
+├── deploy/           # Despliegue VPS
+└── docs/
+```
+

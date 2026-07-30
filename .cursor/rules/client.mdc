@@ -1,0 +1,13 @@
+---
+description: Convenciones del cliente frpc y dtunnel.sh
+globs: client/**/*
+alwaysApply: false
+---
+
+# Client (frpc)
+
+- CLI: `./dtunnel.sh up <subdomain> <port>` → `https://<subdomain>.dtunnel.desarrollado.com`
+- Requiere `DTUNNEL_TOKEN` (mismo que `FRPS_TOKEN` del servidor).
+- `frpc.toml` generado en runtime — no commitear.
+- Validar que `frpc` esté en PATH; mensaje claro si falta.
+- `localIP = 127.0.0.1` por defecto; no asumir WSL salvo que el usuario lo pida.

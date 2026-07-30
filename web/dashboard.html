@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi cuenta — dtunnel</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <a href="/" class="logo">dtunnel</a>
+    <nav class="nav">
+      <a href="/docs.html">Documentación</a>
+      <a href="#" id="logout">Cerrar sesión</a>
+    </nav>
+  </header>
+  <main class="section">
+    <h1>Mi cuenta</h1>
+    <p id="email" style="color:var(--muted);margin-bottom:2rem"></p>
+
+    <h2>Reservar subdominio</h2>
+    <form id="reserve-form" style="max-width:400px;margin-bottom:2rem">
+      <div class="form-group">
+        <label for="name">Nombre (ej. mi-api)</label>
+        <input type="text" id="name" pattern="[a-z0-9-]{3,32}" required placeholder="mi-api">
+      </div>
+      <p id="reserve-msg" class="form-error" hidden></p>
+      <button type="submit" class="btn btn-primary">Reservar</button>
+    </form>
+
+    <h2>Mis subdominios</h2>
+    <ul id="subdomains" style="list-style:none"></ul>
+
+    <h2 style="margin-top:2rem">Usar en CLI</h2>
+    <pre><code>dtunnel login
+dtunnel reserve mi-api
+dtunnel --port 88080 --subdomain mi-api</code></pre>
+  </main>
+  <script>
+    const token = localStorage.getItem('dtunnel_token');
+    if (!token) window.location.href = '/login.html';
+
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+    async function loadMe() {
+      const res = await fetch('/api/me', { headers });
+      if (!res.ok) { window.location.href = '/login.html'; return; }
+      const data = await res.json();
+      document.getElementById('email').textContent = data.email;
+      const ul = document.getElementById('subdomains');
+      ul.innerHTML = data.subdomains.length
+        ? data.subdomains.map(s => `<li><a href="https://${s}.dtunnel.desarrollado.com">${s}.dtunnel.desarrollado.com</a></li>`).join('')
+        : '<li style="color:var(--muted)">Ninguno reservado aún</li>';
+    }
+
+    document.getElementById('reserve-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('reserve-msg');
+      msg.hidden = true;
+      try {
+        const res = await fetch('/api/subdomains/reserve', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ name: document.getElementById('name').value }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        loadMe();
+        document.getElementById('name').value = '';
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.hidden = false;
+      }
+    });
+
+    document.getElementById('logout').addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('dtunnel_token');
+      localStorage.removeItem('dtunnel_email');
+      window.location.href = '/';
+    });
+
+    loadMe();
+  </script>
+</body>
+</html>

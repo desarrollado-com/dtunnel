@@ -1,0 +1,9 @@
+# dtunnel workspace
+
+Lee `AGENTS.md` para contexto completo.
+
+- Solo túnel `*.dtunnel.desarrollado.com` — no devdocker ni `*.lh`.
+- Broker v1: frp (`server/` + `client/dtunnel.sh`).
+- No commitear tokens (`.env`, `frps.runtime.toml`, `frpc.toml`).
+- Docs Hestia: `docs/hestia.md`.
+- Cambios mínimos; bash + Docker en servidor; sin frameworks innecesarios en v1.

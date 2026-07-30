@@ -1,0 +1,17 @@
+# dtunnel — frp server (corre en el VPS)
+bindAddr = "0.0.0.0"
+bindPort = 7000
+
+auth.method = "token"
+auth.token = "__FRPS_TOKEN__"
+
+vhostHTTPPort = __FRPS_VHOST_PORT__
+subDomainHost = "dtunnel.desarrollado.com"
+
+webServer.addr = "127.0.0.1"
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "cambia-esto"
+
+log.to = "console"
+log.level = "info"

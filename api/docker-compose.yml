@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    container_name: dtunnel_api
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    volumes:
+      - ./data:/app/data
