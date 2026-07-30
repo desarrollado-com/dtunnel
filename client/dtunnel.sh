@@ -3,6 +3,7 @@
 # También disponible vía: npm install -g @desarrollado/dtunnel
 set -euo pipefail
 
+DTUNNEL_CLI_VERSION="1.0.2"
 DTUNNEL_API_URL="${DTUNNEL_API_URL:-https://dtunnel.desarrollado.com/api}"
 CONFIG_DIR="${HOME}/.dtunnel"
 CONFIG_FILE="${CONFIG_DIR}/config.json"
@@ -18,6 +19,7 @@ dtunnel — URL pública para tu servidor local
   dtunnel --port <puerto> -s <nombre>  Túnel con subdominio reservado
   dtunnel status                       Estado del túnel local
   dtunnel --list up                    Listar túneles activos
+  dtunnel version                      Versión instalada
   dtunnel login                        Iniciar sesión
   dtunnel register                     Crear cuenta
   dtunnel reserve <nombre>             Reservar subdominio (requiere login)
@@ -274,6 +276,10 @@ cmd_down() {
   echo "Túnel detenido"
 }
 
+cmd_version() {
+  echo "dtunnel ${DTUNNEL_CLI_VERSION}"
+}
+
 cmd_status() {
   local pid email
   pid="$(get_local_tunnel_pid)"
@@ -387,6 +393,7 @@ while [ $# -gt 0 ]; do
     register) CMD="register"; shift ;;
     reserve) CMD="reserve"; SUBDOMAIN="$2"; shift 2 ;;
     status) CMD="status"; shift ;;
+    version|-v|--version) CMD="version"; shift ;;
     list)
       CMD="list"
       shift
@@ -408,6 +415,7 @@ case "$CMD" in
   reserve) cmd_reserve "$SUBDOMAIN" ;;
   down) cmd_down ;;
   status) cmd_status ;;
+  version) cmd_version ;;
   list) cmd_list "$LIST_WHAT" ;;
   up) cmd_up "$PORT" "$SUBDOMAIN" ;;
 esac

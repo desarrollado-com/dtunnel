@@ -9,6 +9,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+const VERSION = PKG.version;
 const CONFIG_DIR = join(homedir(), '.dtunnel');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 const PID_FILE = join(CONFIG_DIR, 'frpc.pid');
@@ -82,6 +84,7 @@ function parseArgs(argv) {
     else if (a === 'down' || a === 'stop') args.cmd = 'down';
     else if (a === 'register') args.cmd = 'register';
     else if (a === 'status') args.cmd = 'status';
+    else if (a === 'version' || a === '-v' || a === '--version') args.cmd = 'version';
     else if (a === 'list') { args.cmd = 'list'; args.listWhat = argv[++i] || 'up'; }
     else if (a === 'reserve') { args.cmd = 'reserve'; args.subdomain = argv[++i]; }
     else if (a === '--help' || a === '-h' || a === 'help') args.cmd = 'help';
@@ -98,6 +101,7 @@ dtunnel — URL pública para tu servidor local
   dtunnel --port <puerto> -s <nombre>  Túnel con subdominio reservado
   dtunnel status                       Estado del túnel local
   dtunnel --list up                    Listar túneles activos
+  dtunnel version                      Versión instalada
   dtunnel login                        Iniciar sesión
   dtunnel register                     Crear cuenta
   dtunnel reserve <nombre>             Reservar subdominio (requiere login)
@@ -279,6 +283,10 @@ function cmdStatus() {
   if (cfg.email) console.log(`  Sesión:     ${cfg.email}`);
 }
 
+function cmdVersion() {
+  console.log(`dtunnel ${VERSION} (@desarrollado/dtunnel)`);
+}
+
 async function cmdList(what) {
   if (what !== 'up') {
     console.error('Uso: dtunnel --list up');
@@ -330,6 +338,7 @@ switch (args.cmd) {
   case 'reserve': await cmdReserve(args.subdomain); break;
   case 'down': cmdDown(); break;
   case 'status': cmdStatus(); break;
+  case 'version': cmdVersion(); break;
   case 'list': await cmdList(args.listWhat); break;
   case 'up': await cmdUp(args); break;
   default: usage(); process.exit(1);

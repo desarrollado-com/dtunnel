@@ -26,6 +26,7 @@
         <a href="#introduccion">Introducción</a>
         <a href="#requisitos">Requisitos</a>
         <a href="#instalacion">Instalación</a>
+        <a href="#actualizacion">Actualización</a>
         <a href="#inicio-rapido">Inicio rápido</a>
         <a href="#cli">Referencia CLI</a>
         <a href="#cuentas">Cuentas y subdominios</a>
@@ -33,6 +34,7 @@
         <a href="#api">API REST</a>
         <a href="#como-funciona">Cómo funciona</a>
         <a href="#limites">Límites y planes</a>
+        <a href="#admin">Panel admin</a>
         <a href="#variables">Variables de entorno</a>
         <a href="#problemas">Solución de problemas</a>
         <a href="#seguridad">Seguridad</a>
@@ -87,6 +89,7 @@
       <!-- Instalación -->
       <section id="instalacion" class="docs-section">
         <h2>Instalación</h2>
+        <p>Versión actual del CLI: <strong>1.0.2</strong> · Comprueba la tuya con <code>dtunnel version</code></p>
 
         <h3>Instalador universal (Linux, macOS y WSL)</h3>
         <p>Este método instala automáticamente la versión correcta de <code>frpc</code> y el CLI
@@ -102,9 +105,38 @@
           Requiere Node.js 16 o superior. Debes instalar <code>frpc</code> por separado desde
           <a href="https://github.com/fatedier/frp/releases" target="_blank" rel="noopener">frp releases</a>.</p>
         <pre><code>npm install -g @desarrollado/dtunnel</code></pre>
-        <p>Paquete en <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npmjs.com/@desarrollado/dtunnel</a> (v1.0.1).</p>
+        <p>Paquete en <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npmjs.com/@desarrollado/dtunnel</a> (v1.0.2).</p>
         <p>Comprueba la instalación:</p>
-        <pre><code>dtunnel --help</code></pre>
+        <pre><code>dtunnel version
+dtunnel --help</code></pre>
+      </section>
+
+      <!-- Actualización -->
+      <section id="actualizacion" class="docs-section">
+        <h2>Actualizar dtunnel</h2>
+        <p>Primero comprueba qué versión tienes instalada:</p>
+        <pre><code>dtunnel version</code></pre>
+        <p>Versión publicada actualmente: <strong>1.0.2</strong></p>
+
+        <h3>Linux / macOS / WSL (instalador curl)</h3>
+        <p>Vuelve a ejecutar el instalador; sobrescribe <code>frpc</code> y <code>dtunnel</code> en <code>/usr/local/bin</code>:</p>
+        <pre><code>curl -O https://install.desarrollado.com/dtunnel/install && sudo bash install
+dtunnel version</code></pre>
+
+        <h3>Node.js / npm</h3>
+        <pre><code>npm install -g @desarrollado/dtunnel@latest
+dtunnel version</code></pre>
+        <p>Para instalar una versión concreta:</p>
+        <pre><code>npm install -g @desarrollado/dtunnel@1.0.2</code></pre>
+
+        <h3>Windows sin WSL</h3>
+        <p>Usa npm (arriba). <code>frpc</code> se actualiza por separado desde
+          <a href="https://github.com/fatedier/frp/releases" target="_blank" rel="noopener">frp releases</a>.</p>
+
+        <div class="docs-callout">
+          Tras actualizar, los túneles abiertos siguen activos hasta que ejecutes <code>dtunnel down</code>.
+          No hace falta reiniciar el servidor remoto.
+        </div>
       </section>
 
       <!-- Inicio rápido -->
@@ -167,6 +199,18 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
               <td>Reservar subdominio persistente (ej. <code>mi-api</code> → <code>mi-api.dtunnel.desarrollado.com</code>)</td>
             </tr>
             <tr>
+              <td><code>dtunnel status</code></td>
+              <td>Estado del túnel local (subdominio, puerto, PID, URLs)</td>
+            </tr>
+            <tr>
+              <td><code>dtunnel --list up</code></td>
+              <td>Listar túneles activos (local y, con sesión, los de tu cuenta)</td>
+            </tr>
+            <tr>
+              <td><code>dtunnel version</code></td>
+              <td>Versión instalada del CLI</td>
+            </tr>
+            <tr>
               <td><code>dtunnel down</code></td>
               <td>Detener el proceso <code>frpc</code> local</td>
             </tr>
@@ -179,6 +223,7 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
         <p>Archivos locales del cliente:</p>
         <ul class="docs-list">
           <li><code>~/.dtunnel/config.json</code> — token de sesión (si hiciste login)</li>
+          <li><code>~/.dtunnel/tunnel.json</code> — estado del túnel activo (subdominio, URLs, PID)</li>
           <li><code>~/.dtunnel/frpc.toml</code> — configuración generada al abrir túnel</li>
           <li><code>~/.dtunnel/frpc.pid</code> — PID del proceso frpc activo</li>
         </ul>
@@ -338,6 +383,22 @@ Authorization: Bearer &lt;token&gt;
             <tr><td>Cuenta requerida</td><td>No</td><td>Sí (gratis)</td></tr>
           </tbody>
         </table>
+      </section>
+
+      <section id="admin" class="docs-section">
+        <h2>Panel de administración</h2>
+        <p>
+          Superadmins pueden gestionar usuarios, planes, precios y límites en
+          <a href="/admin.html">dtunnel.desarrollado.com/admin.html</a> (requiere cuenta con permisos admin).
+        </p>
+        <p>Desde el panel puedes:</p>
+        <ul class="docs-list">
+          <li>Ver estadísticas de usuarios y túneles activos</li>
+          <li>Cambiar plan o desactivar cuentas</li>
+          <li>Crear y editar planes (precio, límites de túneles y subdominios)</li>
+          <li>Cerrar túneles activos en el servidor</li>
+          <li>Ajustar el límite de túneles anónimos</li>
+        </ul>
       </section>
 
       <!-- Variables -->

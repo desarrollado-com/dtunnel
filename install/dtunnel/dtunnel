@@ -3,10 +3,12 @@
 # También disponible vía: npm install -g @desarrollado/dtunnel
 set -euo pipefail
 
+DTUNNEL_CLI_VERSION="1.0.2"
 DTUNNEL_API_URL="${DTUNNEL_API_URL:-https://dtunnel.desarrollado.com/api}"
 CONFIG_DIR="${HOME}/.dtunnel"
 CONFIG_FILE="${CONFIG_DIR}/config.json"
 PID_FILE="${CONFIG_DIR}/frpc.pid"
+STATE_FILE="${CONFIG_DIR}/tunnel.json"
 FRPC_CONF="${CONFIG_DIR}/frpc.toml"
 
 usage() {
@@ -15,6 +17,9 @@ dtunnel — URL pública para tu servidor local
 
   dtunnel --port <puerto>              Túnel con subdominio aleatorio
   dtunnel --port <puerto> -s <nombre>  Túnel con subdominio reservado
+  dtunnel status                       Estado del túnel local
+  dtunnel --list up                    Listar túneles activos
+  dtunnel version                      Versión instalada
   dtunnel login                        Iniciar sesión
   dtunnel register                     Crear cuenta
   dtunnel reserve <nombre>             Reservar subdominio (requiere login)
@@ -32,6 +37,29 @@ require_cmd() {
 json_get() {
   # json_get '<json>' 'key'  → valor string (requiere python3)
   python3 -c "import json,sys; d=json.loads(sys.argv[1]); print(d[sys.argv[2]])" "$1" "$2" 2>/dev/null
+}
+
+api_get() {
+  local path="$1"
+  local auth="${2:-}"
+  local tmp code
+  tmp="$(mktemp)"
+  if [ -n "$auth" ]; then
+    code=$(curl -sS -o "$tmp" -w '%{http_code}' \
+      -H "Authorization: Bearer ${auth}" \
+      "${DTUNNEL_API_URL}${path}")
+  else
+    code=$(curl -sS -o "$tmp" -w '%{http_code}' "${DTUNNEL_API_URL}${path}")
+  fi
+  if [ "$code" -ge 400 ]; then
+    local err
+    err="$(json_get "$(cat "$tmp")" error 2>/dev/null || cat "$tmp")"
+    rm -f "$tmp"
+    echo "ERROR: ${err:-HTTP $code}" >&2
+    return 1
+  fi
+  cat "$tmp"
+  rm -f "$tmp"
 }
 
 api_post() {
@@ -72,12 +100,56 @@ save_session() {
   mkdir -p "$CONFIG_DIR"
   DTUNNEL_EMAIL="$email" DTUNNEL_TOKEN="$token" DTUNNEL_CFG="$CONFIG_FILE" python3 -c "
 import json, os
-json.dump(
-    {'email': os.environ['DTUNNEL_EMAIL'], 'token': os.environ['DTUNNEL_TOKEN']},
-    open(os.environ['DTUNNEL_CFG'], 'w'),
-    indent=2,
-)
+cfg = {}
+if os.path.exists(os.environ['DTUNNEL_CFG']):
+    try:
+        cfg = json.load(open(os.environ['DTUNNEL_CFG']))
+    except Exception:
+        cfg = {}
+cfg['email'] = os.environ['DTUNNEL_EMAIL']
+cfg['token'] = os.environ['DTUNNEL_TOKEN']
+json.dump(cfg, open(os.environ['DTUNNEL_CFG'], 'w'), indent=2)
 "
+}
+
+load_email() {
+  [ -f "$CONFIG_FILE" ] || return 0
+  python3 -c "import json; print(json.load(open('$CONFIG_FILE')).get('email',''))" 2>/dev/null || true
+}
+
+is_pid_running() {
+  local pid="$1"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+save_tunnel_state() {
+  local pid="$1" subdomain="$2" port="$3" http_url="$4" https_url="$5"
+  mkdir -p "$CONFIG_DIR"
+  DTUNNEL_PID="$pid" DTUNNEL_SUB="$subdomain" DTUNNEL_PORT="$port" \
+  DTUNNEL_HTTP="$http_url" DTUNNEL_HTTPS="$https_url" DTUNNEL_STATE="$STATE_FILE" python3 -c "
+import json, os
+from datetime import datetime, timezone
+json.dump({
+    'pid': int(os.environ['DTUNNEL_PID']),
+    'subdomain': os.environ['DTUNNEL_SUB'],
+    'port': int(os.environ['DTUNNEL_PORT']),
+    'httpUrl': os.environ['DTUNNEL_HTTP'],
+    'httpsUrl': os.environ['DTUNNEL_HTTPS'],
+    'startedAt': datetime.now(timezone.utc).isoformat(),
+}, open(os.environ['DTUNNEL_STATE'], 'w'), indent=2)
+"
+}
+
+get_local_tunnel_pid() {
+  if [ -f "$STATE_FILE" ]; then
+    python3 -c "import json; print(json.load(open('$STATE_FILE')).get('pid',''))" 2>/dev/null || true
+    return
+  fi
+  if [ -f "$PID_FILE" ]; then cat "$PID_FILE"; fi
+}
+
+clear_tunnel_state() {
+  rm -f "$STATE_FILE" "$PID_FILE" "$FRPC_CONF"
 }
 
 write_frpc_toml() {
@@ -150,6 +222,13 @@ cmd_up() {
     echo "Ya hay un túnel activo. Ejecuta: dtunnel down"
     exit 1
   fi
+  local stale_pid
+  stale_pid="$(get_local_tunnel_pid)"
+  if [ -n "$stale_pid" ] && is_pid_running "$stale_pid"; then
+    echo "Ya hay un túnel activo. Ejecuta: dtunnel down"
+    exit 1
+  fi
+  clear_tunnel_state
 
   local body="{\"port\":${port}"
   [ -n "$subdomain" ] && body="${body},\"subdomain\":\"${subdomain}\""
@@ -175,6 +254,7 @@ cmd_up() {
   write_frpc_toml "$server" "$server_port" "$frp_token" "$sub" "$port"
   frpc -c "$FRPC_CONF" >/dev/null 2>&1 &
   echo $! > "$PID_FILE"
+  save_tunnel_state "$!" "$sub" "$port" "$http_url" "$https_url"
   sleep 1
 
   echo ""
@@ -185,26 +265,141 @@ cmd_up() {
 }
 
 cmd_down() {
-  if [ -f "$PID_FILE" ]; then
+  local pid
+  pid="$(get_local_tunnel_pid)"
+  if [ -n "$pid" ]; then
+    kill "$pid" 2>/dev/null || true
+  elif [ -f "$PID_FILE" ]; then
     kill "$(cat "$PID_FILE")" 2>/dev/null || true
-    rm -f "$PID_FILE"
   fi
-  rm -f "$FRPC_CONF"
+  clear_tunnel_state
   echo "Túnel detenido"
+}
+
+cmd_version() {
+  echo "dtunnel ${DTUNNEL_CLI_VERSION}"
+}
+
+cmd_status() {
+  local pid email
+  pid="$(get_local_tunnel_pid)"
+  email="$(load_email)"
+
+  if [ -z "$pid" ] || ! is_pid_running "$pid"; then
+    clear_tunnel_state
+    echo "Sin túnel activo en esta máquina."
+    [ -n "$email" ] && echo "Sesión: ${email}"
+    return
+  fi
+
+  if [ ! -f "$STATE_FILE" ]; then
+    echo "Túnel activo"
+    echo "  PID frpc:   ${pid}"
+    [ -n "$email" ] && echo "  Sesión:     ${email}"
+    return
+  fi
+
+  python3 <<PY
+import json
+state = json.load(open("${STATE_FILE}"))
+email = """${email}"""
+print("Túnel activo")
+print(f"  Subdominio: {state.get('subdomain', '-')}")
+print(f"  Puerto:     localhost:{state.get('port', '-')}")
+if state.get('httpUrl'):
+    print(f"  HTTP:       {state['httpUrl']}")
+if state.get('httpsUrl'):
+    print(f"  HTTPS:      {state['httpsUrl']}")
+print(f"  PID frpc:   {state.get('pid', '${pid}')}")
+if state.get('startedAt'):
+    print(f"  Desde:      {state['startedAt']}")
+if email:
+    print(f"  Sesión:     {email}")
+PY
+}
+
+cmd_list() {
+  local what="${1:-}"
+  if [ "$what" != "up" ]; then
+    echo "Uso: dtunnel --list up"
+    exit 1
+  fi
+
+  require_cmd curl
+  local pid token email resp
+  pid="$(get_local_tunnel_pid)"
+  token="$(load_token)"
+  email="$(load_email)"
+  local has_local=0 has_remote=0
+
+  if [ -n "$pid" ] && is_pid_running "$pid" && [ -f "$STATE_FILE" ]; then
+    has_local=1
+    echo "LOCAL"
+    python3 <<PY
+import json
+s = json.load(open("${STATE_FILE}"))
+print(f"  {s.get('subdomain','?'):<16} localhost:{s.get('port','?')}  {s.get('httpsUrl','')}")
+PY
+  elif [ -n "$pid" ] && ! is_pid_running "$pid"; then
+    clear_tunnel_state
+  fi
+
+  if [ -n "$token" ]; then
+    resp="$(api_get "/tunnels" "$token" 2>/dev/null || true)"
+    if [ -n "$resp" ]; then
+      DTUNNEL_RESP="$resp" DTUNNEL_LOCAL="$STATE_FILE" python3 <<'PY'
+import json, os
+resp = json.loads(os.environ['DTUNNEL_RESP'])
+tunnels = resp.get('tunnels', [])
+if not tunnels:
+    raise SystemExit(0)
+local_sub = None
+if os.path.exists(os.environ['DTUNNEL_LOCAL']):
+    try:
+        local_sub = json.load(open(os.environ['DTUNNEL_LOCAL'])).get('subdomain')
+    except Exception:
+        pass
+print('\nCUENTA' if local_sub is not None else 'CUENTA')
+for t in tunnels:
+    marker = '*' if t.get('subdomain') == local_sub else ' '
+    print(f"{marker} {t.get('subdomain','?'):<16} localhost:{t.get('port','?')}  {t.get('httpsUrl','')}")
+if local_sub is not None:
+    print('\n* = también activo en esta máquina')
+PY
+      has_remote=1
+    else
+      echo "No se pudo consultar la cuenta." >&2
+    fi
+  fi
+
+  if [ "$has_local" -eq 0 ] && [ "$has_remote" -eq 0 ]; then
+    echo "No hay túneles activos."
+    [ -z "$token" ] && echo "Inicia sesión con dtunnel login para ver túneles de tu cuenta."
+  fi
 }
 
 # --- main ---
 CMD="up"
 PORT=""
 SUBDOMAIN=""
+LIST_WHAT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --port|-p) PORT="$2"; shift 2 ;;
     --subdomain|-s) SUBDOMAIN="$2"; shift 2 ;;
+    --list) CMD="list"; LIST_WHAT="$2"; shift 2 ;;
     login) CMD="login"; shift ;;
     register) CMD="register"; shift ;;
     reserve) CMD="reserve"; SUBDOMAIN="$2"; shift 2 ;;
+    status) CMD="status"; shift ;;
+    version|-v|--version) CMD="version"; shift ;;
+    list)
+      CMD="list"
+      shift
+      LIST_WHAT="${1:-up}"
+      [ $# -gt 0 ] && shift
+      ;;
     down|stop) CMD="down"; shift ;;
     -h|--help|help) usage; exit 0 ;;
     *)
@@ -219,5 +414,8 @@ case "$CMD" in
   register) cmd_register ;;
   reserve) cmd_reserve "$SUBDOMAIN" ;;
   down) cmd_down ;;
+  status) cmd_status ;;
+  version) cmd_version ;;
+  list) cmd_list "$LIST_WHAT" ;;
   up) cmd_up "$PORT" "$SUBDOMAIN" ;;
 esac
