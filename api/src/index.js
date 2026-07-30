@@ -35,6 +35,7 @@ import {
   cleanupStaleTunnels,
   getAdminStats,
   getInactiveSubdomainStatus,
+  deleteTunnel,
 } from './db.js';
 import { appendAuditLog } from './audit.js';
 import { createAdminRouter } from './routes/admin.js';
@@ -360,7 +361,24 @@ app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
     }
   }
 
-  if (subdomainTaken(subdomain)) {
+  const existing = findTunnelBySubdomain(subdomain);
+  if (existing) {
+    const ownedByUser = userId != null && existing.user_id === userId;
+    const ownedByAnonIp = userId == null && existing.user_id == null
+      && existing.client_ip === clientIp;
+    if (ownedByUser || ownedByAnonIp) {
+      deleteTunnel(existing.id);
+      unregisterTunnel(subdomain);
+      activeCount = Math.max(0, activeCount - 1);
+    } else {
+      return res.status(409).json({
+        error: 'Subdominio en uso',
+        hint: userId
+          ? 'Ejecuta dtunnel down o cierra el túnel desde el dashboard.'
+          : 'Ese subdominio ya tiene un túnel activo.',
+      });
+    }
+  } else if (subdomainTaken(subdomain)) {
     return res.status(409).json({ error: 'Subdominio en uso' });
   }
 

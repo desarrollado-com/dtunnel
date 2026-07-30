@@ -2,6 +2,14 @@
 
 Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
 
+## [2.0.1] - 2026-07-30
+
+### Corregido
+
+- Crash de Node.js al fallar un comando (sin `Assertion failed` en Windows).
+- Si tu subdominio reservado quedó huérfano en el servidor, la API lo reemplaza automáticamente.
+- Mensajes más claros para «Subdominio en uso», «no reservado» y «Inicia sesión».
+
 ## [2.0.0] - 2026-07-30
 
 ### Añadido

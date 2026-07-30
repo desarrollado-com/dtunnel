@@ -250,7 +250,7 @@ async function cmdRegister() {
 }
 
 async function cmdReserve(name) {
-  if (!name) { console.error('Uso: dtunnel reserve <nombre>'); process.exit(1); }
+  if (!name) { console.error('Uso: dtunnel reserve <nombre>'); return 1; }
   const data = await apiFetch('/subdomains/reserve', {
     method: 'POST',
     body: JSON.stringify({ name }),
@@ -346,7 +346,7 @@ async function cmdUpFrp(data, args) {
 }
 
 async function cmdUp(args) {
-  if (!args.port) { usage(); process.exit(1); }
+  if (!args.port) { usage(); return 1; }
 
   await releaseStaleTunnel();
 
@@ -370,12 +370,29 @@ async function cmdUp(args) {
         console.error(err.message);
         console.error('Ejecuta: dtunnel down');
         console.error('Si el túnel ya no corre localmente, dtunnel down libera el registro en el servidor.');
-        process.exit(1);
+        return 1;
       }
     } else if (String(err.message).includes('Límite de túneles')) {
       console.error(err.message);
       console.error('Ejecuta: dtunnel down');
-      process.exit(1);
+      return 1;
+    } else if (String(err.message).includes('Subdominio en uso')) {
+      console.error(err.message);
+      if (args.subdomain) {
+        console.error(`Prueba: dtunnel down && dtunnel --port ${args.port} -s ${args.subdomain}`);
+        console.error('Si no lo reservaste: dtunnel reserve ' + args.subdomain);
+      }
+      return 1;
+    } else if (String(err.message).includes('Subdominio no reservado')) {
+      console.error(err.message);
+      if (args.subdomain) {
+        console.error(`Reserva primero: dtunnel reserve ${args.subdomain}`);
+      }
+      return 1;
+    } else if (String(err.message).includes('Inicia sesión')) {
+      console.error(err.message);
+      console.error('Ejecuta: dtunnel login');
+      return 1;
     } else {
       throw err;
     }
@@ -383,19 +400,20 @@ async function cmdUp(args) {
 
   if (getLocalTunnel()) {
     console.error('Ya hay un túnel activo. Ejecuta: dtunnel down');
-    process.exit(1);
+    return 1;
   }
 
   const useNative = !args.frp && data.wsUrl && data.tunnelToken;
   if (useNative) {
     await cmdUpNative(data, args);
-    return;
+    return 0;
   }
   if (!data.server || !data.token) {
     console.error('El servidor no devolvió credenciales de túnel. Prueba de nuevo o usa --frp si está habilitado.');
-    process.exit(1);
+    return 1;
   }
   await cmdUpFrp(data, args);
+  return 0;
 }
 
 async function cmdDown() {
@@ -458,7 +476,7 @@ function cmdVersion() {
 async function cmdList(what) {
   if (what !== 'up') {
     console.error('Uso: dtunnel --list up');
-    process.exit(1);
+    return 1;
   }
 
   const local = getLocalTunnel();
@@ -505,16 +523,36 @@ async function cmdList(what) {
 
 const args = parseArgs(process.argv);
 
-switch (args.cmd) {
-  case 'help': usage(); break;
-  case 'login': await cmdLogin(); break;
-  case 'register': await cmdRegister(); break;
-  case 'reserve': await cmdReserve(args.subdomain); break;
-  case 'down': await cmdDown(); break;
-  case 'status': cmdStatus(); break;
-  case 'version': cmdVersion(); break;
-  case 'install-frpc': await cmdInstallFrpc(); break;
-  case 'list': await cmdList(args.listWhat); break;
-  case 'up': await cmdUp(args); break;
-  default: usage(); process.exit(1);
+async function main() {
+  try {
+    let code = 0;
+    switch (args.cmd) {
+      case 'help': usage(); break;
+      case 'login': await cmdLogin(); break;
+      case 'register': await cmdRegister(); break;
+      case 'reserve': {
+        const rc = await cmdReserve(args.subdomain);
+        if (rc) return rc;
+        break;
+      }
+      case 'down': await cmdDown(); break;
+      case 'status': cmdStatus(); break;
+      case 'version': cmdVersion(); break;
+      case 'install-frpc': await cmdInstallFrpc(); break;
+      case 'list': {
+        const rc = await cmdList(args.listWhat);
+        if (rc) return rc;
+        break;
+      }
+      case 'up': code = await cmdUp(args); break;
+      default: usage(); code = 1;
+    }
+    return code;
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    return 1;
+  }
 }
+
+const exitCode = await main();
+process.exit(exitCode);
