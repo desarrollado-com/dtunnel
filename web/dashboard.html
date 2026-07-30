@@ -79,6 +79,15 @@
       </table>
     </div>
 
+    <h2 style="margin-top:2rem">Seguridad</h2>
+    <form id="password-form" class="auth-form" style="max-width:400px;margin-bottom:2rem">
+      <md-outlined-text-field id="current-password" type="password" label="Contraseña actual" required></md-outlined-text-field>
+      <md-outlined-text-field id="new-password" type="password" label="Nueva contraseña (mín. 8)" required minlength="8"></md-outlined-text-field>
+      <p id="password-msg" class="form-error" hidden></p>
+      <p id="password-ok" class="form-success" hidden></p>
+      <button type="submit" class="btn btn-primary">Cambiar contraseña</button>
+    </form>
+
     <h2 style="margin-top:2rem">Abrir un túnel (CLI)</h2>
     <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">Paso 1 ya lo hiciste al reservar. Paso 2 es cuando quieras exponer tu app:</p>
     <pre><code>dtunnel login
@@ -182,6 +191,32 @@ dtunnel down                        # al terminar (la reserva sigue)</code></pre
         if (!res.ok) throw new Error(data.error);
         loadMe();
         document.getElementById('name').value = '';
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.hidden = false;
+      }
+    });
+
+    document.getElementById('password-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('password-msg');
+      const ok = document.getElementById('password-ok');
+      msg.hidden = true;
+      ok.hidden = true;
+      try {
+        const res = await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            currentPassword: document.getElementById('current-password').value,
+            password: document.getElementById('new-password').value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error');
+        ok.textContent = 'Contraseña actualizada.';
+        ok.hidden = false;
+        document.getElementById('password-form').reset();
       } catch (err) {
         msg.textContent = err.message;
         msg.hidden = false;

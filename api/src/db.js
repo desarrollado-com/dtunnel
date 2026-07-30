@@ -355,6 +355,11 @@ export function findTunnelBySubdomain(subdomain) {
   return db.prepare('SELECT * FROM active_tunnels WHERE subdomain = ?').get(String(subdomain).toLowerCase());
 }
 
+export function releaseAllUserTunnels(userId) {
+  const result = db.prepare('DELETE FROM active_tunnels WHERE user_id = ?').run(userId);
+  return result.changes;
+}
+
 export function releaseTunnel(subdomain, userId = undefined) {
   const row = findTunnelBySubdomain(subdomain);
   if (!row) return { released: false };

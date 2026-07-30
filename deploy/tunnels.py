@@ -85,11 +85,29 @@ def cmd_purge_anon(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_purge_stale(_: argparse.Namespace) -> int:
+    cfg = load_cfg()
+    client = connect(cfg)
+    code, out, err = docker_node(
+        client,
+        "import { cleanupStaleTunnels } from './src/db.js'; "
+        "console.log(JSON.stringify({ removed: cleanupStaleTunnels(10, 24) }));",
+    )
+    client.close()
+    if code != 0:
+        print(err or out, file=sys.stderr)
+        return code
+    data = json.loads(out.strip() or "{}")
+    print(f"Eliminados: {data.get('removed', 0)} túnel(es) obsoletos")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Operaciones de túneles en producción")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="Listar túneles activos en SQLite").set_defaults(func=cmd_list)
     sub.add_parser("purge-anon", help="Eliminar túneles anónimos huérfanos").set_defaults(func=cmd_purge_anon)
+    sub.add_parser("purge-stale", help="Eliminar túneles sin heartbeat o muy antiguos").set_defaults(func=cmd_purge_stale)
     args = parser.parse_args()
     return args.func(args)
 

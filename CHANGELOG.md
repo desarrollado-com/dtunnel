@@ -5,6 +5,14 @@ Todos los cambios notables de dtunnel se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.9] - 2026-07-30
+
+### Añadido
+
+- `POST /api/auth/change-password` — cambiar contraseña desde el dashboard.
+- Admin: suspender usuario y cerrar todos sus túneles (`POST /api/admin/users/:id/suspend`, `close-tunnels`).
+- `deploy/tunnels.py purge-stale` y `deploy/install-cron.py` (purga horaria en VPS).
+
 ## [1.0.8] - 2026-07-30
 
 ### Añadido
@@ -125,6 +133,7 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - CLI: `dtunnel --port`, `login`, `register`, `reserve`, `down`.
 - Landing y documentación en `web/`.
 
+[1.0.9]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.5...v1.0.6

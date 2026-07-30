@@ -77,6 +77,7 @@ Recuperación de contraseña: [forgot-password.html](https://dtunnel.desarrollad
 | 4 | Instalador curl + npm `@desarrollado/dtunnel` | Hecho |
 | 5 | Panel superadmin (usuarios, planes, límites) | Hecho |
 | 5b | Admin en subdominio + recuperación de contraseña SMTP | Hecho (v1.0.7) |
+| 5c | Cambiar contraseña, suspender usuario, cron purga | Hecho (v1.0.9) |
 | 6 | Billing / pagos automáticos | Futuro |
 
 ## Panel superadmin

@@ -45,7 +45,7 @@ def build_api_env(cfg: dict[str, str], jwt_secret: str) -> str:
         f"ADMIN_EMAILS={admin_emails}",
         f"APP_URL={app_url}",
         f"CORS_ORIGINS={cors}",
-        "API_VERSION=1.0.8",
+        "API_VERSION=1.0.9",
     ]
     for key in ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_NAME"):
         if cfg.get(key):

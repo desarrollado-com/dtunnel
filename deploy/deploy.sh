@@ -77,7 +77,7 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 printf 'FRPS_TOKEN=%s\nFRPS_VHOST_PORT=%s\nFRPS_BIND_PORT=7000\n' \
   "$DTUNNEL_TOKEN" "${DTUNNEL_PORT:-18080}" > "$TMP_DIR/server.env"
-printf 'PORT=3001\nJWT_SECRET=%s\nFRPS_TOKEN=%s\nFRPS_SERVER=%s\nFRPS_PORT=7000\nDOMAIN=%s\nANON_TUNNEL_LIMIT=1\nUSER_TUNNEL_LIMIT=5\nAPI_VERSION=1.0.8\nAPP_URL=https://%s\nCORS_ORIGINS=https://%s,https://dtunnel-admin.desarrollado.com\n' \
+printf 'PORT=3001\nJWT_SECRET=%s\nFRPS_TOKEN=%s\nFRPS_SERVER=%s\nFRPS_PORT=7000\nDOMAIN=%s\nANON_TUNNEL_LIMIT=1\nUSER_TUNNEL_LIMIT=5\nAPI_VERSION=1.0.9\nAPP_URL=https://%s\nCORS_ORIGINS=https://%s,https://dtunnel-admin.desarrollado.com\n' \
   "$JWT_SECRET" "$DTUNNEL_TOKEN" "$DOMAIN" "$DOMAIN" "$DOMAIN" "$DOMAIN" > "$TMP_DIR/api.env"
 if [ -n "${ADMIN_EMAILS:-}" ]; then
   printf 'ADMIN_EMAILS=%s\n' "$ADMIN_EMAILS" >> "$TMP_DIR/api.env"

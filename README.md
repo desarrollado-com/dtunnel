@@ -2,7 +2,7 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Plataforma (web + API):** `1.0.8` · **CLI npm:** `1.0.6`
+**Plataforma (web + API):** `1.0.9` · **CLI npm:** `1.0.6`
 
 ```
 localhost:88080  →  frpc  →  frps (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
@@ -92,6 +92,8 @@ python deploy/fix-admin-ssl.py
 # Túneles en producción (listar / purgar huérfanos anónimos)
 python deploy/tunnels.py list
 python deploy/tunnels.py purge-anon
+python deploy/tunnels.py purge-stale
+python deploy/install-cron.py
 ```
 
 Variables SMTP y admin en `secretos/.env.dtunnel`: `SMTP_*`, `ADMIN_EMAILS`, `DTUNNEL_ADMIN_PATH_PUBLIC`.

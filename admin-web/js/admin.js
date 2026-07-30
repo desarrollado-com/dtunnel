@@ -68,7 +68,11 @@ async function loadUsers() {
       <td>${user.activeTunnelCount} / ${user.tunnelLimit}</td>
       <td>${user.reservedCount} / ${user.reservedSubdomainLimit}</td>
       <td>${user.isAdmin ? badge('sí', 'accent') : '—'}</td>
-      <td><button type="button" class="btn btn-ghost btn-sm" data-edit-user="${user.id}">Editar</button></td>
+      <td class="admin-actions">
+        <button type="button" class="btn btn-ghost btn-sm" data-edit-user="${user.id}">Editar</button>
+        ${user.activeTunnelCount > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-close-user-tunnels="${user.id}">Cerrar túneles</button>` : ''}
+        ${user.active ? `<button type="button" class="btn btn-ghost btn-sm" data-suspend-user="${user.id}">Suspender</button>` : ''}
+      </td>
     </tr>
   `).join('');
 }
@@ -164,9 +168,32 @@ document.getElementById('refresh-tunnels').addEventListener('click', loadTunnels
 document.getElementById('new-plan-btn').addEventListener('click', () => showPlanEditor());
 
 document.getElementById('users-table').addEventListener('click', (e) => {
-  const id = Number(e.target.dataset.editUser);
-  if (id) showUserEditor(id);
+  const editId = Number(e.target.dataset.editUser);
+  if (editId) showUserEditor(editId);
+  const suspendId = Number(e.target.dataset.suspendUser);
+  if (suspendId) suspendUser(suspendId);
+  const closeId = Number(e.target.dataset.closeUserTunnels);
+  if (closeId) closeUserTunnels(closeId);
 });
+
+async function suspendUser(userId) {
+  if (!confirm('¿Suspender esta cuenta y cerrar todos sus túneles?')) return;
+  const data = await api(`/users/${userId}/suspend`, { method: 'POST' });
+  if (!data) return;
+  loadUsers();
+  loadOverview();
+  loadTunnels();
+}
+
+async function closeUserTunnels(userId) {
+  if (!confirm('¿Cerrar todos los túneles activos de este usuario?')) return;
+  const data = await api(`/users/${userId}/close-tunnels`, { method: 'POST' });
+  if (!data) return;
+  alert(`Cerrados: ${data.closedTunnels} túnel(es)`);
+  loadUsers();
+  loadOverview();
+  loadTunnels();
+}
 
 document.getElementById('plans-table').addEventListener('click', (e) => {
   const id = Number(e.target.dataset.editPlan);

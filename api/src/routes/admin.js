@@ -13,6 +13,7 @@ import {
   publicUser,
   setSetting,
   updatePlan,
+  releaseAllUserTunnels,
   updateUser,
 } from '../db.js';
 
@@ -95,6 +96,26 @@ export function createAdminRouter({ authRequired, adminRequired }) {
       reserved_subdomain_limit_override: reservedSubdomainLimitOverride,
     });
     res.json(publicUser(updated));
+  });
+
+  router.post('/users/:id/suspend', (req, res) => {
+    const id = Number(req.params.id);
+    if (id === req.user.userId) {
+      return res.status(400).json({ error: 'No puedes suspender tu propia cuenta' });
+    }
+    const user = findUserById(id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const closedTunnels = releaseAllUserTunnels(id);
+    const updated = updateUser(id, { active: false });
+    res.json({ ok: true, user: publicUser(updated), closedTunnels });
+  });
+
+  router.post('/users/:id/close-tunnels', (req, res) => {
+    const id = Number(req.params.id);
+    const user = findUserById(id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const closedTunnels = releaseAllUserTunnels(id);
+    res.json({ ok: true, closedTunnels });
   });
 
   router.get('/plans', (_req, res) => {

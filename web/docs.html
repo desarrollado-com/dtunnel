@@ -449,6 +449,10 @@ POST /api/auth/forgot-password
 { "email": "tu@email.com" }
 # → { "ok": true, "message": "..." }  (siempre 200 si el formato es válido)
 
+POST /api/auth/change-password
+Authorization: Bearer &lt;token&gt;
+{ "currentPassword": "...", "password": "nuevaMin8" }
+
 POST /api/auth/reset-password
 { "token": "...", "password": "minimo8chars" }</code></pre>
 

@@ -22,7 +22,7 @@ Configura alertas HTTP(S) sobre estos endpoints:
 La API responde:
 
 ```json
-{ "ok": true, "service": "dtunnel-api", "version": "1.0.7" }
+{ "ok": true, "service": "dtunnel-api", "version": "1.0.9" }
 ```
 
 `GET /api/status` devuelve más detalle (túneles activos, usuarios) para dashboards internos.
@@ -34,25 +34,25 @@ Los túneles sin heartbeat se limpian automáticamente en la API (10 min sin pin
 ```bash
 python deploy/tunnels.py list
 python deploy/tunnels.py purge-anon
+python deploy/tunnels.py purge-stale
 ```
 
-### Cron en el VPS (opcional)
+### Cron en el VPS
 
-Cada hora, purgar túneles anónimos huérfanos:
+Instalación automática (recomendado):
 
 ```bash
-# Como root, crontab -e
-0 * * * * cd /opt/dtunnel && python3 deploy/tunnels.py purge-anon >> /var/log/dtunnel-purge.log 2>&1
+python deploy/install-cron.py
 ```
 
-> El script `tunnels.py` se ejecuta vía SSH desde tu PC por defecto. Para cron en el VPS, copia el script o usa `docker exec` contra la API (ver `deploy/tunnels.py`).
+Purga horaria vía `docker exec` (túneles sin heartbeat >10 min o >24 h de antigüedad). Log: `/var/log/dtunnel-purge.log`.
 
-Alternativa directa en el servidor:
+Alternativa manual en el servidor:
 
 ```bash
 docker exec dtunnel_api node --input-type=module -e "
-import { purgeStaleTunnels } from './src/db.js';
-console.log(JSON.stringify(purgeStaleTunnels()));
+import { cleanupStaleTunnels } from './src/db.js';
+console.log(JSON.stringify({ removed: cleanupStaleTunnels(10, 24) }));
 "
 ```
 
