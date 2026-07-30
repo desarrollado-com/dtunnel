@@ -42,7 +42,7 @@
 
   <main>
     <section class="hero">
-      <p class="label-large text-muted" style="margin-bottom:1rem">Material Design 3 · Plataforma v1.0.9 · CLI v1.0.6</p>
+      <p class="label-large text-muted" style="margin-bottom:1rem">Material Design 3 · Plataforma v2.0.0 · CLI v2.0.0</p>
       <h1>Tu localhost,<br><span class="gradient">visible en Internet</span></h1>
       <p class="lead">
         Proxy inverso seguro para desarrolladores. HTTP, HTTPS, JSON, imágenes y WebSocket —
@@ -63,9 +63,9 @@
       <ol class="steps">
         <li>
           <strong>Instala dtunnel</strong>
-          <p>Linux, macOS o WSL — un solo comando (incluye <code>frpc</code>):</p>
+          <p>Linux, macOS o WSL — requiere Node.js 18+ (instala el CLI npm, sin <code>frpc</code>):</p>
           <pre><code>curl -O https://install.desarrollado.com/dtunnel/install && sudo bash install</code></pre>
-          <p class="text-muted" style="margin-top:.5rem">Windows sin WSL: <code>npm install -g @desarrollado/dtunnel</code> · <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npm</a></p>
+          <p class="text-muted" style="margin-top:.5rem">O directamente: <code>npm install -g @desarrollado/dtunnel</code> · <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npm</a></p>
         </li>
         <li>
           <strong>Levanta tu app y abre el túnel</strong>
@@ -132,24 +132,21 @@ dtunnel --port 88080</code></pre>
   subgraph VPS["VPS — HestiaCP"]
     NG["Nginx :443 TLS"]
     WEB["Landing · Docs · Admin"]
-    API["API Node :3001"]
-    FRPS["frps broker\n:18080 HTTP · :7000 control"]
+    API["API Node :3001\n+ gateway :18080"]
     NG -->|"dtunnel.desarrollado.com"| WEB
-    NG -->|"/api/*"| API
-    NG -->|"*.dtunnel.desarrollado.com"| FRPS
+    NG -->|"/api/* · /tunnel/ws"| API
+    NG -->|"*.dtunnel.desarrollado.com"| API
   end
 
   subgraph DEV["Tu máquina"]
-    CLI["dtunnel CLI"]
-    FRPC["frpc cliente"]
+    CLI["dtunnel CLI\n(Node.js)"]
     APP["localhost:PUERTO\n(tu app)"]
     CLI -->|"POST /api/tunnels"| API
-    CLI -->|"genera config"| FRPC
-    FRPC --> APP
+    CLI <-->|"WebSocket WSS"| API
+    CLI --> APP
   end
 
-  U -->|"HTTPS"| NG
-  FRPC <-->|"túnel TCP :7000"| FRPS</pre>
+  U -->|"HTTPS"| NG</pre>
         </div>
       </div>
 
@@ -161,21 +158,18 @@ dtunnel --port 88080</code></pre>
   participant Dev as Desarrollador
   participant CLI as dtunnel CLI
   participant API as API
-  participant FRPC as frpc
-  participant FRPS as frps
   participant NG as Nginx
   participant User as Visitante
 
   Dev->>CLI: dtunnel --port 88080
   CLI->>API: POST /api/tunnels
-  API-->>CLI: subdominio + token frp
-  CLI->>FRPC: iniciar con frpc.toml
-  FRPC->>FRPS: conectar :7000
+  API-->>CLI: subdominio + tunnelToken + wsUrl
+  CLI->>API: WebSocket /tunnel/ws
 
   User->>NG: GET https://mi-app.dtunnel.desarrollado.com
-  NG->>FRPS: proxy HTTP
-  FRPS->>FRPC: reenviar al túnel activo
-  FRPC->>Dev: http://127.0.0.1:88080
+  NG->>API: proxy HTTP :18080
+  API->>CLI: petición vía WebSocket
+  CLI->>Dev: http://127.0.0.1:88080
   Dev-->>User: respuesta HTTP/HTTPS</pre>
         </div>
       </div>
@@ -186,21 +180,18 @@ dtunnel --port 88080</code></pre>
           <pre class="mermaid">flowchart LR
   subgraph Publico["Expuesto a Internet"]
     P443["Nginx :443"]
-    P7000["frps :7000\ncontrol clientes"]
   end
 
   subgraph Interno["Solo localhost / red interna"]
-    P3001["API :3001"]
-    P18080["frps :18080\nvhost HTTP"]
+    P3001["API :3001\nREST + WebSocket"]
+    P18080["Gateway HTTP :18080\nsubdominios wildcard"]
   end
 
   P443 --> P3001
   P443 --> P18080
-  P7000 --> FRPS["frps"]
-  FRPS --> P18080
+  P3001 --> P18080
 
-  style P443 fill:#2b4278,color:#dce1ff
-  style P7000 fill:#2b4278,color:#dce1ff</pre>
+  style P443 fill:#2b4278,color:#dce1ff</pre>
         </div>
       </div>
 
@@ -215,7 +206,7 @@ dtunnel --port 88080</code></pre>
       <p class="section-intro">
         Los visitantes siempre acceden por <strong>HTTPS</strong>. El certificado TLS wildcard
         (<code>*.dtunnel.desarrollado.com</code>) lo gestiona Hestia con <strong>Let's Encrypt</strong>.
-        Tu app local no abre puertos en el router: solo <code>frpc</code> inicia una conexión saliente autenticada.
+        Tu app local no abre puertos en el router: el CLI mantiene una conexión WebSocket saliente autenticada con JWT.
       </p>
 
       <div class="diagram-section">
@@ -230,15 +221,15 @@ dtunnel --port 88080</code></pre>
   end
 
   subgraph VPS_INT["VPS — red interna"]
-    NG -->|"HTTP localhost\n(no sale a Internet)"| FRPS["frps :18080"]
+    NG -->|"HTTP localhost"| GW["API gateway :18080"]
   end
 
-  subgraph TUNNEL["Túnel frp — autenticado"]
-    FRPS <-->|"TCP :7000\ntoken frp"| FRPC["frpc"]
+  subgraph TUNNEL["Túnel nativo — WebSocket"]
+    GW <-->|"WSS /tunnel/ws\nJWT tunnelToken"| CLI["dtunnel CLI"]
   end
 
   subgraph LOCAL["Tu PC — loopback"]
-    FRPC -->|"HTTP 127.0.0.1\nsolo local"| APP["tu aplicación"]
+    CLI -->|"HTTP 127.0.0.1\nsolo local"| APP["tu aplicación"]
   end
 
   style PUBLIC fill:#1e3a5f,color:#dce1ff
@@ -253,7 +244,7 @@ dtunnel --port 88080</code></pre>
         <div class="diagram-card">
           <pre class="mermaid">flowchart TB
   L1["① Borde HTTPS\nCertificado wildcard · TLS en Nginx"]
-  L2["② Túnel frp\nToken compartido · solo frpc autorizado"]
+  L2["② Túnel nativo\nWebSocket + JWT · solo cliente autorizado"]
   L3["③ API y cuentas\nJWT en login · reserva de subdominios"]
   L4["④ Localhost\nSin puertos abiertos en router/NAT"]
 
@@ -274,7 +265,7 @@ dtunnel --port 88080</code></pre>
         </article>
         <article>
           <span class="security-badge security-badge-warn">Autenticado</span>
-          <p><code>frpc</code> → <code>frps</code> con token; sin token no hay túnel.</p>
+          <p>CLI → API con <code>tunnelToken</code> JWT; sin token válido no hay túnel.</p>
         </article>
         <article>
           <span class="security-badge security-badge-info">Local</span>

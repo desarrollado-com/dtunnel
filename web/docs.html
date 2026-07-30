@@ -79,7 +79,7 @@
           <li>WebSockets (WSS) a través del túnel HTTPS</li>
         </ul>
         <div class="docs-callout">
-          <strong>Conexión saliente únicamente.</strong> El cliente abre conexión hacia el VPS (puerto 7000).
+          <strong>Conexión saliente únicamente.</strong> El CLI abre WebSocket hacia el VPS (HTTPS/WSS).
           Por eso funciona detrás de NAT, firewall corporativo o VPN sin reglas especiales.
         </div>
       </section>
@@ -92,8 +92,8 @@
             <tr><th>Componente</th><th>Versión mínima</th><th>Notas</th></tr>
           </thead>
           <tbody>
-            <tr><td><strong>Node.js</strong></td><td>18+</td><td>Para el CLI <code>dtunnel</code></td></tr>
-            <tr><td><strong>frpc</strong></td><td>0.61.x</td><td>Cliente del broker frp (<a href="https://github.com/fatedier/frp/releases">releases</a>)</td></tr>
+            <tr><td><strong>Node.js</strong></td><td>18+</td><td>CLI <code>dtunnel</code> (túnel nativo v2)</td></tr>
+            <tr><td><strong>frpc</strong> (opcional)</td><td>0.61.x</td><td>Solo modo legacy <code>dtunnel --frp</code></td></tr>
             <tr><td><strong>Servidor local</strong></td><td>—</td><td>Cualquier app en <code>127.0.0.1:PUERTO</code></td></tr>
           </tbody>
         </table>
@@ -102,23 +102,20 @@
       <!-- Instalación -->
       <section id="instalacion" class="docs-section">
         <h2>Instalación</h2>
-        <p>Plataforma web/API: <strong>1.0.7</strong> · CLI npm: <strong>1.0.6</strong> · Comprueba con <code>dtunnel version</code></p>
+        <p>Plataforma web/API: <strong>2.0.0</strong> · CLI npm: <strong>2.0.0</strong> · Comprueba con <code>dtunnel version</code></p>
 
         <h3>Instalador universal (Linux, macOS y WSL)</h3>
-        <p>Este método instala automáticamente la versión correcta de <code>frpc</code> y el CLI
-          <code>dtunnel</code> para tu sistema. No requiere Node.js.</p>
+        <p>Requiere <strong>Node.js 18+</strong>. Instala el paquete npm global (túnel nativo, sin <code>frpc</code>):</p>
         <pre><code>curl -O https://install.desarrollado.com/dtunnel/install && sudo bash install</code></pre>
         <p>Opcionalmente, audita el script antes de ejecutarlo:</p>
         <pre><code>curl https://install.desarrollado.com/dtunnel/install</code></pre>
         <p>Espejo alternativo:</p>
         <pre><code>curl -O https://dtunnel.desarrollado.com/install/dtunnel/install && sudo bash install</code></pre>
 
-        <h3>Instalar con Node.js</h3>
-        <p>La mejor opción para desarrolladores Node.js/JavaScript/TypeScript o Windows sin WSL.
-          Requiere Node.js 16 o superior. <code>frpc</code> se descarga automáticamente la primera vez que abres un túnel
-          (o con <code>dtunnel install-frpc</code>) en <code>~/.dtunnel/bin/</code>.</p>
+        <h3>Instalar con Node.js (recomendado)</h3>
+        <p>La mejor opción para desarrolladores y Windows. v2 no descarga binarios externos.</p>
         <pre><code>npm install -g @desarrollado/dtunnel</code></pre>
-        <p>Paquete en <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npmjs.com/@desarrollado/dtunnel</a> (v1.0.6).</p>
+        <p>Paquete en <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npmjs.com/@desarrollado/dtunnel</a> (v2.0.0).</p>
         <p>Comprueba la instalación:</p>
         <pre><code>dtunnel version
 dtunnel --help</code></pre>
@@ -130,10 +127,10 @@ dtunnel --help</code></pre>
         <p>Consulta el <a href="/changelog.html">changelog</a> para ver qué incluye cada versión.</p>
         <p>Primero comprueba qué versión tienes instalada:</p>
         <pre><code>dtunnel version</code></pre>
-        <p>Versión publicada de la plataforma: <strong>1.0.7</strong> · CLI: <strong>1.0.6</strong></p>
+        <p>Versión publicada de la plataforma: <strong>2.0.0</strong> · CLI: <strong>2.0.0</strong></p>
 
         <h3>Linux / macOS / WSL (instalador curl)</h3>
-        <p>Vuelve a ejecutar el instalador; sobrescribe <code>frpc</code> y <code>dtunnel</code> en <code>/usr/local/bin</code>:</p>
+        <p>Vuelve a ejecutar el instalador (actualiza el paquete npm global):</p>
         <pre><code>curl -O https://install.desarrollado.com/dtunnel/install && sudo bash install
 dtunnel version</code></pre>
 
@@ -141,11 +138,11 @@ dtunnel version</code></pre>
         <pre><code>npm install -g @desarrollado/dtunnel@latest
 dtunnel version</code></pre>
         <p>Para instalar una versión concreta:</p>
-        <pre><code>npm install -g @desarrollado/dtunnel@1.0.6</code></pre>
+        <pre><code>npm install -g @desarrollado/dtunnel@2.0.0</code></pre>
 
         <h3>Windows sin WSL</h3>
-        <p>Usa npm (arriba). Para actualizar solo <code>frpc</code>: <code>dtunnel install-frpc</code>
-          o borra <code>~/.dtunnel/bin/</code> y vuelve a abrir un túnel.</p>
+        <p>Usa npm (arriba). Modo legacy con <code>frpc</code>: <code>dtunnel --frp --port PUERTO</code>
+          o <code>dtunnel install-frpc</code>.</p>
 
         <div class="docs-callout">
           Tras actualizar, los túneles abiertos siguen activos hasta que ejecutes <code>dtunnel down</code>.
@@ -225,12 +222,16 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
               <td>Versión instalada del CLI</td>
             </tr>
             <tr>
+              <td><code>dtunnel --frp --port &lt;puerto&gt;</code></td>
+              <td>Modo legacy con binario <code>frpc</code> (si el antivirus bloquea, usa el modo nativo por defecto)</td>
+            </tr>
+            <tr>
               <td><code>dtunnel install-frpc</code></td>
-              <td>Descargar o actualizar <code>frpc</code> en <code>~/.dtunnel/bin/</code></td>
+              <td>Descargar <code>frpc</code> para modo <code>--frp</code> (legacy)</td>
             </tr>
             <tr>
               <td><code>dtunnel down</code></td>
-              <td>Detener el proceso <code>frpc</code> local</td>
+              <td>Detener el túnel local (proceso Node o <code>frpc</code> en modo legacy)</td>
             </tr>
             <tr>
               <td><code>dtunnel --help</code></td>
@@ -242,9 +243,9 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
         <ul class="docs-list">
           <li><code>~/.dtunnel/config.json</code> — token de sesión (si hiciste login)</li>
           <li><code>~/.dtunnel/tunnel.json</code> — estado del túnel activo (subdominio, URLs, PID)</li>
-          <li><code>~/.dtunnel/frpc.toml</code> — configuración generada al abrir túnel</li>
-          <li><code>~/.dtunnel/bin/frpc</code> — binario del cliente (auto-instalado en v1.0.6+)</li>
-          <li><code>~/.dtunnel/frpc.pid</code> — PID del proceso frpc activo</li>
+          <li><code>~/.dtunnel/tunnel.pid</code> — PID del proceso del túnel (v2 nativo)</li>
+          <li><code>~/.dtunnel/frpc.toml</code> — solo modo legacy <code>--frp</code></li>
+          <li><code>~/.dtunnel/bin/frpc</code> — solo modo legacy</li>
         </ul>
       </section>
 
@@ -272,7 +273,7 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
               <td><strong>Túnel</strong></td>
               <td>La <em>conexión viva</em> entre tu PC y el servidor</td>
               <td><code>dtunnel --port 3000</code> en ejecución</td>
-              <td>Solo mientras <code>frpc</code> está activo (<code>dtunnel down</code> lo cierra)</td>
+              <td>Solo mientras el CLI mantiene el túnel activo (<code>dtunnel down</code> lo cierra)</td>
             </tr>
             <tr>
               <td><strong>Reserva</strong></td>
@@ -320,7 +321,7 @@ dtunnel reserve mi-api    # guarda "mi-api" en tu cuenta — NO abre túnel</cod
         <pre><code>dtunnel --port 3000 --subdomain mi-api
 # → https://mi-api.dtunnel.desarrollado.com  ⟶  http://localhost:3000</code></pre>
         <p>
-          Aquí sí se crea el túnel activo. Mientras el comando esté en marcha (o <code>frpc</code> siga corriendo),
+          Aquí sí se crea el túnel activo. Mientras el CLI esté en marcha (o el proceso en segundo plano siga vivo),
           la URL pública apunta a tu máquina. Al cerrar con <code>dtunnel down</code> la URL deja de responder,
           pero <strong>la reserva de <code>mi-api</code> sigue en tu cuenta</strong> para la próxima vez.
         </p>
@@ -511,24 +512,20 @@ Authorization: Bearer &lt;token&gt;
   subgraph VPS["VPS HestiaCP"]
     NG["Nginx :443"]
     WEB["Web estática + Admin"]
-    API["API Node :3001"]
-    FRPS["frps :18080 / :7000"]
+    API["API Node :3001\n+ gateway :18080"]
     NG --> WEB
     NG --> API
-    NG --> FRPS
   end
 
   subgraph PC["Tu PC"]
-    CLI["dtunnel CLI"]
-    FRPC["frpc"]
+    CLI["dtunnel CLI\n(Node.js)"]
     APP["127.0.0.1:PUERTO"]
     CLI --> API
-    CLI --> FRPC
-    FRPC --> APP
+    CLI <-->|WSS| API
+    CLI --> APP
   end
 
-  U -->|HTTPS| NG
-  FRPC <-->|TCP 7000| FRPS</pre>
+  U -->|HTTPS| NG</pre>
         </div>
 
         <h3>Secuencia: abrir un túnel</h3>
@@ -537,15 +534,12 @@ Authorization: Bearer &lt;token&gt;
   participant Dev as Desarrollador
   participant CLI as dtunnel CLI
   participant API as API
-  participant FRPC as frpc
-  participant FRPS as frps
 
   Dev->>CLI: dtunnel --port 88080
   CLI->>API: POST /api/tunnels
-  API-->>CLI: subdomain, token, server
-  CLI->>FRPC: frpc -c ~/.dtunnel/frpc.toml
-  FRPC->>FRPS: auth + registro subdominio
-  Note over FRPC,FRPS: Túnel activo mientras frpc corre</pre>
+  API-->>CLI: subdomain, tunnelToken, wsUrl
+  CLI->>API: WebSocket /tunnel/ws
+  Note over CLI,API: Túnel activo mientras el CLI corre</pre>
         </div>
 
         <h3>Secuencia: visita HTTP</h3>
@@ -553,14 +547,14 @@ Authorization: Bearer &lt;token&gt;
           <pre class="mermaid">sequenceDiagram
   participant User as Visitante
   participant NG as Nginx
-  participant FRPS as frps
-  participant FRPC as frpc
+  participant API as API gateway
+  participant CLI as dtunnel CLI
   participant App as localhost:88080
 
   User->>NG: GET https://mi-app.dtunnel.desarrollado.com
-  NG->>FRPS: proxy a vhost :18080
-  FRPS->>FRPC: túnel del subdominio mi-app
-  FRPC->>App: GET http://127.0.0.1:88080
+  NG->>API: proxy HTTP :18080
+  API->>CLI: petición vía WebSocket
+  CLI->>App: GET http://127.0.0.1:88080
   App-->>User: respuesta</pre>
         </div>
 
@@ -571,19 +565,18 @@ Authorization: Bearer &lt;token&gt;
           </thead>
           <tbody>
             <tr><td>Nginx (TLS)</td><td>443</td><td>Público</td></tr>
-            <tr><td>API Node</td><td>3001</td><td>Solo vía <code>/api</code> en apex</td></tr>
-            <tr><td>frps vhost HTTP</td><td>18080</td><td>Interno (Nginx → frps)</td></tr>
-            <tr><td>frps control</td><td>7000</td><td>Público (clientes <code>frpc</code>)</td></tr>
+            <tr><td>API Node + WebSocket</td><td>3001</td><td><code>/api</code> y <code>/tunnel/ws</code></td></tr>
+            <tr><td>Gateway HTTP nativo</td><td>18080</td><td>Interno (Nginx → API, subdominios wildcard)</td></tr>
           </tbody>
         </table>
 
         <h3>Resumen en 5 pasos</h3>
         <ol class="docs-list">
-          <li>El CLI pide un subdominio a la API y lanza <code>frpc</code>.</li>
-          <li><code>frpc</code> se conecta al broker (puerto 7000) con autenticación por token.</li>
+          <li>El CLI pide un subdominio a la API y abre WebSocket con <code>tunnelToken</code>.</li>
+          <li>El cliente mantiene la conexión WSS hacia <code>/tunnel/ws</code>.</li>
           <li>Un visitante abre <code>https://nombre.dtunnel.desarrollado.com</code>.</li>
-          <li>Nginx termina TLS y reenvía a <code>frps</code>, que enruta al túnel activo.</li>
-          <li><code>frpc</code> reenvía la petición a <code>127.0.0.1:PUERTO</code>.</li>
+          <li>Nginx termina TLS y reenvía al gateway HTTP de la API (<code>:18080</code>).</li>
+          <li>La API reenvía la petición al CLI vía WebSocket → <code>127.0.0.1:PUERTO</code>.</li>
         </ol>
       </section>
 
@@ -639,17 +632,20 @@ Authorization: Bearer &lt;token&gt;
             </tr>
           </tbody>
         </table>
-        <p>El token de sesión y credenciales frp los gestiona el CLI; no hace falta exportar <code>DTUNNEL_TOKEN</code> manualmente.</p>
+        <p>El token de sesión y el <code>tunnelToken</code> los gestiona el CLI; no hace falta exportar variables manualmente.</p>
       </section>
 
       <!-- Problemas -->
       <section id="problemas" class="docs-section">
         <h2>Solución de problemas</h2>
 
-        <h3><code>Instala frpc</code> al ejecutar dtunnel</h3>
-        <p>En v1.0.6+ el CLI intenta descargar <code>frpc</code> automáticamente. Si falla, ejecuta
-          <code>dtunnel install-frpc</code> o usa el instalador curl (Linux/macOS/WSL). Comprueba con
-          <code>frpc --version</code> o <code>~/.dtunnel/bin/frpc --version</code>.</p>
+        <h3>Antivirus bloquea el túnel (modo legacy)</h3>
+        <p>En v2 el modo por defecto es <strong>nativo</strong> (solo Node.js). Si usas <code>--frp</code> y el antivirus bloquea <code>frpc</code>,
+          vuelve al modo nativo: <code>dtunnel --port PUERTO</code> sin <code>--frp</code>.</p>
+
+        <h3>Node.js no encontrado (instalador curl)</h3>
+        <p>El instalador v2 requiere Node.js 18+. Instálalo desde <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a>
+          o con <code>nvm</code>, luego vuelve a ejecutar el script de instalación.</p>
 
         <h3>502 Bad Gateway en la URL pública</h3>
         <ul class="docs-list">
@@ -665,10 +661,10 @@ Authorization: Bearer &lt;token&gt;
           <li>Con <code>--subdomain</code>, el nombre debe estar reservado en tu cuenta (<code>dtunnel reserve</code> o panel web).</li>
         </ul>
 
-        <h3><code>Connection refused</code> al conectar frpc</h3>
+        <h3>WebSocket bloqueado en red corporativa</h3>
         <ul class="docs-list">
-          <li>Firewall bloqueando salida TCP al puerto 7000 del servidor.</li>
-          <li>Red corporativa que bloquea conexiones salientes no estándar.</li>
+          <li>Firewall o proxy que bloquea WSS saliente hacia <code>dtunnel.desarrollado.com</code>.</li>
+          <li>Prueba desde otra red o usa modo legacy <code>dtunnel --frp</code> si está habilitado en el servidor.</li>
         </ul>
 
         <h3><code>Límite de túneles alcanzado</code></h3>
@@ -677,7 +673,7 @@ Authorization: Bearer &lt;token&gt;
         <h3>La URL no carga desde otro dispositivo</h3>
         <ul class="docs-list">
           <li>Usa la URL <strong>HTTPS</strong> que muestra el CLI.</li>
-          <li>El túnel solo existe mientras tu PC ejecuta <code>frpc</code> (no es hosting permanente en plan gratuito).</li>
+          <li>El túnel solo existe mientras tu PC ejecuta el CLI (no es hosting permanente en plan gratuito).</li>
         </ul>
 
         <h3>Más ayuda</h3>
@@ -695,7 +691,7 @@ Authorization: Bearer &lt;token&gt;
         <p>
           dtunnel usa <strong>TLS en el borde</strong> (Nginx + Let's Encrypt) para que todas las URLs públicas
           sean <code>https://</code>. El tráfico entre visitante e Internet está cifrado hasta el VPS;
-          dentro del servidor, Nginx reenvía en HTTP a <code>frps</code> en localhost.
+          dentro del servidor, Nginx reenvía en HTTP al gateway nativo de la API en localhost.
         </p>
 
         <h3>Mapa de cifrado y zonas de confianza</h3>
@@ -709,13 +705,13 @@ Authorization: Bearer &lt;token&gt;
   end
 
   subgraph DMZ["VPS — no expuesto directamente"]
-    NGX -->|"proxy_pass HTTP"| FRP["frps :18080"]
-    API["API :3001\nJWT + HTTPS vía /api"]
+    NGX -->|"proxy_pass HTTP"| GW["API gateway :18080"]
+    API["API :3001\nJWT + WSS /tunnel/ws"]
     NGX --> API
   end
 
   subgraph OUT["Conexión saliente autenticada"]
-    FRP <-->|"TCP :7000\nauth.token"| CLIENT["frpc en tu PC"]
+    GW <-->|"WSS + tunnelToken"| CLIENT["dtunnel CLI"]
   end
 
   subgraph LOOP["Loopback — tu máquina"]
@@ -734,32 +730,29 @@ Authorization: Bearer &lt;token&gt;
   participant B as Navegador
   participant NG as Nginx :443
   participant LE as Let's Encrypt
-  participant FR as frps → frpc
+  participant GW as API gateway
 
   B->>NG: ClientHello (SNI: mi-app.dtunnel.desarrollado.com)
   NG->>B: ServerHello + certificado wildcard
   Note over B,NG: TLS establecido — tráfico cifrado
   B->>NG: GET / (HTTPS)
-  NG->>FR: HTTP interno al túnel mi-app
-  FR->>B: respuesta (cifrada en el camino de vuelta)</pre>
+  NG->>GW: HTTP interno al túnel mi-app
+  GW->>B: respuesta (cifrada en el camino de vuelta)</pre>
         </div>
 
-        <h3>Autenticación del túnel (frp)</h3>
+        <h3>Autenticación del túnel (nativo v2)</h3>
         <div class="diagram-card">
           <pre class="mermaid">sequenceDiagram
   participant CLI as dtunnel CLI
   participant API as API
-  participant FRPC as frpc
-  participant FRPS as frps
 
   CLI->>API: POST /api/tunnels (opcional: Bearer JWT)
-  API-->>CLI: subdomain + frp token + server:7000
-  CLI->>FRPC: frpc.toml con auth.token
-  FRPC->>FRPS: login con token
+  API-->>CLI: subdomain + tunnelToken + wsUrl
+  CLI->>API: WebSocket /tunnel/ws?token=...
   alt token inválido
-    FRPS-->>FRPC: rechazado
+    API-->>CLI: cierre 4001
   else token válido
-    FRPS-->>FRPC: túnel registrado
+    API-->>CLI: ready
   end</pre>
         </div>
 
@@ -769,10 +762,10 @@ Authorization: Bearer &lt;token&gt;
           </thead>
           <tbody>
             <tr><td>Visitante → VPS</td><td>HTTPS / TLS</td><td>Cifrado + certificado wildcard</td></tr>
-            <tr><td>Nginx → frps</td><td>HTTP localhost</td><td>Solo red interna del VPS</td></tr>
-            <tr><td>frpc → frps</td><td>TCP :7000</td><td>Token <code>auth.token</code> de frp</td></tr>
-            <tr><td>frpc → tu app</td><td>HTTP 127.0.0.1</td><td>Solo loopback en tu PC</td></tr>
-            <tr><td>CLI → API</td><td>HTTPS</td><td>JWT tras <code>login</code> (cuentas)</td></tr>
+            <tr><td>Nginx → API gateway</td><td>HTTP localhost</td><td>Solo red interna del VPS</td></tr>
+            <tr><td>CLI → API</td><td>WSS + JWT tunnelToken</td><td>Token de corta duración por túnel</td></tr>
+            <tr><td>CLI → tu app</td><td>HTTP 127.0.0.1</td><td>Solo loopback en tu PC</td></tr>
+            <tr><td>CLI → API (cuenta)</td><td>HTTPS</td><td>JWT tras <code>login</code></td></tr>
           </tbody>
         </table>
 

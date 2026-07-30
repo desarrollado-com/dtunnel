@@ -152,6 +152,7 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - CLI: `dtunnel --port`, `login`, `register`, `reserve`, `down`.
 - Landing y documentación en `web/`.
 
+[2.0.0]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.9...v2.0.0
 [1.0.9]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.6...v1.0.7

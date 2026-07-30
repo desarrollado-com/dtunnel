@@ -1,6 +1,6 @@
 (function () {
-  const version = '1.0.9';
-  const cliVersion = '1.0.6';
+  const version = '2.0.0';
+  const cliVersion = '2.0.0';
   document.querySelectorAll('[data-site-footer]').forEach((el) => {
     el.innerHTML = `
       <p>dtunnel v${version} (CLI ${cliVersion}) ·

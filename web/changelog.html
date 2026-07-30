@@ -36,6 +36,19 @@
     <p class="lead">Historial de versiones del CLI, instalador curl, web y API.
       También en <a href="https://github.com/desarrollado-com/dtunnel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">GitHub</a>.</p>
 
+    <article class="changelog-entry" id="v2-0-0">
+      <header class="changelog-header">
+        <h2><a href="#v2-0-0">2.0.0</a></h2>
+        <time datetime="2026-07-30">30 jul 2026</time>
+      </header>
+      <ul class="docs-list">
+        <li><strong>Túnel nativo v2</strong> — solo Node.js + WebSocket; sin binario <code>frpc</code> (evita falsos positivos de antivirus).</li>
+        <li>CLI npm usa modo nativo por defecto; <code>--frp</code> / <code>--legacy</code> para el modo anterior.</li>
+        <li>API v2.0.0 con gateway HTTP en <code>:18080</code> y WebSocket en <code>/tunnel/ws</code>.</li>
+        <li>Instalador curl actualizado: instala vía <code>npm</code> (requiere Node 18+).</li>
+      </ul>
+    </article>
+
     <article class="changelog-entry" id="v1-0-9">
       <header class="changelog-header">
         <h2><a href="#v1-0-9">1.0.9</a></h2>
