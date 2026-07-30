@@ -288,6 +288,40 @@ md-outlined-text-field {
   margin-bottom: 2rem;
   line-height: 1.7;
 }
+
+.security-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2rem;
+}
+
+.security-legend article {
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-large);
+  padding: 1.25rem;
+}
+
+.security-legend p {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.5;
+}
+
+.security-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.security-badge-ok { background: color-mix(in srgb, var(--md-sys-color-tertiary) 25%, transparent); color: var(--md-sys-color-tertiary); }
+.security-badge-warn { background: color-mix(in srgb, var(--md-sys-color-primary) 20%, transparent); color: var(--md-sys-color-primary); }
+.security-badge-info { background: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant); }
+.security-badge-alert { background: color-mix(in srgb, var(--md-sys-color-error) 18%, transparent); color: var(--md-sys-color-error); }
 .card-featured { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-high); }
 .card h3, .grid article h3 { margin-bottom: 0.5rem; font-weight: 500; }
 .price { font-size: 2rem; font-weight: 400; margin-bottom: 1rem; }

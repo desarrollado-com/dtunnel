@@ -26,6 +26,7 @@
     <nav class="nav">
       <a href="#comenzar">Comenzar</a>
       <a href="#arquitectura">Arquitectura</a>
+      <a href="#seguridad">Seguridad</a>
       <a href="/docs.html">Documentación</a>
       <a href="/changelog.html">Changelog</a>
       <a href="#ayuda">Ayuda</a>
@@ -205,6 +206,87 @@ dtunnel --port 88080</code></pre>
       <p class="text-muted">
         Más detalle en la <a href="/docs.html#como-funciona">documentación técnica</a>
         y en <a href="https://github.com/desarrollado-com/dtunnel/blob/main/docs/architecture.md" target="_blank" rel="noopener">architecture.md</a>.
+      </p>
+    </section>
+
+    <section id="seguridad" class="section">
+      <h2>Seguridad y SSL</h2>
+      <p class="section-intro">
+        Los visitantes siempre acceden por <strong>HTTPS</strong>. El certificado TLS wildcard
+        (<code>*.dtunnel.desarrollado.com</code>) lo gestiona Hestia con <strong>Let's Encrypt</strong>.
+        Tu app local no abre puertos en el router: solo <code>frpc</code> inicia una conexión saliente autenticada.
+      </p>
+
+      <div class="diagram-section">
+        <h3>Dónde se cifra el tráfico</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">flowchart LR
+  subgraph PUBLIC["Internet — cifrado TLS"]
+    U["Visitante / Webhook"]
+    U -->|"HTTPS :443\nTLS 1.2 / 1.3"| NG["Nginx\nterminación SSL"]
+    LE["Let's Encrypt\nwildcard *.dtunnel.*"]
+    LE -.->|"certificado"| NG
+  end
+
+  subgraph VPS_INT["VPS — red interna"]
+    NG -->|"HTTP localhost\n(no sale a Internet)"| FRPS["frps :18080"]
+  end
+
+  subgraph TUNNEL["Túnel frp — autenticado"]
+    FRPS <-->|"TCP :7000\ntoken frp"| FRPC["frpc"]
+  end
+
+  subgraph LOCAL["Tu PC — loopback"]
+    FRPC -->|"HTTP 127.0.0.1\nsolo local"| APP["tu aplicación"]
+  end
+
+  style PUBLIC fill:#1e3a5f,color:#dce1ff
+  style VPS_INT fill:#282a31,color:#e3e2e9
+  style TUNNEL fill:#2b4278,color:#dce1ff
+  style LOCAL fill:#1e4e4f,color:#bcebec</pre>
+        </div>
+      </div>
+
+      <div class="diagram-section">
+        <h3>Capas de protección</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">flowchart TB
+  L1["① Borde HTTPS\nCertificado wildcard · TLS en Nginx"]
+  L2["② Túnel frp\nToken compartido · solo frpc autorizado"]
+  L3["③ API y cuentas\nJWT en login · reserva de subdominios"]
+  L4["④ Localhost\nSin puertos abiertos en router/NAT"]
+
+  L1 --> L2 --> L3
+  L2 --> L4
+
+  style L1 fill:#2b4278,color:#dce1ff
+  style L2 fill:#424659,color:#dee0f9
+  style L3 fill:#1e4e4f,color:#bcebec
+  style L4 fill:#33353c,color:#e3e2e9</pre>
+        </div>
+      </div>
+
+      <div class="security-legend">
+        <article>
+          <span class="security-badge security-badge-ok">Cifrado</span>
+          <p>Visitante → VPS (<code>https://</code>). Certificado válido en el navegador.</p>
+        </article>
+        <article>
+          <span class="security-badge security-badge-warn">Autenticado</span>
+          <p><code>frpc</code> → <code>frps</code> con token; sin token no hay túnel.</p>
+        </article>
+        <article>
+          <span class="security-badge security-badge-info">Local</span>
+          <p>Tu app en <code>127.0.0.1</code> — no expuesta directamente a Internet.</p>
+        </article>
+        <article>
+          <span class="security-badge security-badge-alert">Importante</span>
+          <p>Quien tenga la URL puede entrar. Protege rutas sensibles en tu app.</p>
+        </article>
+      </div>
+
+      <p class="text-muted">
+        Guía completa: <a href="/docs.html#seguridad">Seguridad y SSL en la documentación</a>.
       </p>
     </section>
 

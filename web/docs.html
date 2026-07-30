@@ -554,13 +554,109 @@ Authorization: Bearer &lt;token&gt;
 
       <!-- Seguridad -->
       <section id="seguridad" class="docs-section">
-        <h2>Seguridad</h2>
+        <h2>Seguridad y SSL/TLS</h2>
+        <p>
+          dtunnel usa <strong>TLS en el borde</strong> (Nginx + Let's Encrypt) para que todas las URLs públicas
+          sean <code>https://</code>. El tráfico entre visitante e Internet está cifrado hasta el VPS;
+          dentro del servidor, Nginx reenvía en HTTP a <code>frps</code> en localhost.
+        </p>
+
+        <h3>Mapa de cifrado y zonas de confianza</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">flowchart TB
+  subgraph EXT["Zona pública — TLS activo"]
+    V["Cliente HTTPS"]
+    V -->|"TLS 1.2/1.3 :443"| NGX["Nginx"]
+    CERT["Cert Let's Encrypt\n*.dtunnel.desarrollado.com"]
+    CERT -.-> NGX
+  end
+
+  subgraph DMZ["VPS — no expuesto directamente"]
+    NGX -->|"proxy_pass HTTP"| FRP["frps :18080"]
+    API["API :3001\nJWT + HTTPS vía /api"]
+    NGX --> API
+  end
+
+  subgraph OUT["Conexión saliente autenticada"]
+    FRP <-->|"TCP :7000\nauth.token"| CLIENT["frpc en tu PC"]
+  end
+
+  subgraph LOOP["Loopback — tu máquina"]
+    CLIENT --> APP["127.0.0.1:PUERTO"]
+  end
+
+  style EXT fill:#2b4278,color:#dce1ff
+  style DMZ fill:#282a31,color:#e3e2e9
+  style OUT fill:#424659,color:#dee0f9
+  style LOOP fill:#1e4e4f,color:#bcebec</pre>
+        </div>
+
+        <h3>Handshake SSL (visitante)</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">sequenceDiagram
+  participant B as Navegador
+  participant NG as Nginx :443
+  participant LE as Let's Encrypt
+  participant FR as frps → frpc
+
+  B->>NG: ClientHello (SNI: mi-app.dtunnel.desarrollado.com)
+  NG->>B: ServerHello + certificado wildcard
+  Note over B,NG: TLS establecido — tráfico cifrado
+  B->>NG: GET / (HTTPS)
+  NG->>FR: HTTP interno al túnel mi-app
+  FR->>B: respuesta (cifrada en el camino de vuelta)</pre>
+        </div>
+
+        <h3>Autenticación del túnel (frp)</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">sequenceDiagram
+  participant CLI as dtunnel CLI
+  participant API as API
+  participant FRPC as frpc
+  participant FRPS as frps
+
+  CLI->>API: POST /api/tunnels (opcional: Bearer JWT)
+  API-->>CLI: subdomain + frp token + server:7000
+  CLI->>FRPC: frpc.toml con auth.token
+  FRPC->>FRPS: login con token
+  alt token inválido
+    FRPS-->>FRPC: rechazado
+  else token válido
+    FRPS-->>FRPC: túnel registrado
+  end</pre>
+        </div>
+
+        <table class="docs-table">
+          <thead>
+            <tr><th>Tramo</th><th>Protocolo</th><th>Protección</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Visitante → VPS</td><td>HTTPS / TLS</td><td>Cifrado + certificado wildcard</td></tr>
+            <tr><td>Nginx → frps</td><td>HTTP localhost</td><td>Solo red interna del VPS</td></tr>
+            <tr><td>frpc → frps</td><td>TCP :7000</td><td>Token <code>auth.token</code> de frp</td></tr>
+            <tr><td>frpc → tu app</td><td>HTTP 127.0.0.1</td><td>Solo loopback en tu PC</td></tr>
+            <tr><td>CLI → API</td><td>HTTPS</td><td>JWT tras <code>login</code> (cuentas)</td></tr>
+          </tbody>
+        </table>
+
+        <div class="docs-callout">
+          <strong>SSL automático:</strong> no configures certificados en tu app local.
+          Hestia renueva el wildcard de Let's Encrypt; el CLI solo imprime la URL
+          <code>https://subdominio.dtunnel.desarrollado.com</code>.
+        </div>
+
+        <div class="docs-callout docs-callout-warn">
+          <strong>Responsabilidad del desarrollador:</strong> la URL pública es accesible por quien la conozca
+          (como ngrok). Añade autenticación en tu app para rutas de admin, APIs sensibles o datos privados.
+        </div>
+
+        <h3>Buenas prácticas</h3>
         <ul class="docs-list">
-          <li>Las URLs públicas son accesibles por cualquiera que conozca el enlace (como ngrok/Tunnelmole).</li>
-          <li>No expongas servicios de administración sin autenticación propia.</li>
-          <li>Usa HTTPS en la URL pública; el tráfico viaja cifrado hasta el VPS.</li>
-          <li>Con cuenta registrada, solo tú puedes usar subdominios que hayas reservado.</li>
-          <li>Cierra el túnel con <code>dtunnel down</code> cuando no lo necesites.</li>
+          <li>Comparte solo la URL <strong>HTTPS</strong> que muestra el CLI.</li>
+          <li>No expongas paneles de admin sin login propio en la aplicación.</li>
+          <li>Con cuenta registrada, solo tú puedes reservar y usar tus subdominios.</li>
+          <li>Cierra el túnel con <code>dtunnel down</code> cuando termines de desarrollar.</li>
+          <li>No commitees <code>~/.dtunnel/config.json</code> ni <code>frpc.toml</code> (contienen tokens).</li>
         </ul>
       </section>
     </main>
