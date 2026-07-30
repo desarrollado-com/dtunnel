@@ -1,5 +1,5 @@
 (function () {
-  const version = '1.0.7';
+  const version = '1.0.8';
   const cliVersion = '1.0.6';
   document.querySelectorAll('[data-site-footer]').forEach((el) => {
     el.innerHTML = `

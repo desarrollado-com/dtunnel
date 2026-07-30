@@ -5,6 +5,18 @@ Todos los cambios notables de dtunnel se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.8] - 2026-07-30
+
+### Añadido
+
+- Botón **Cerrar** en túneles activos del dashboard (`DELETE /api/tunnels/:subdomain`).
+- `deploy.py` y `deploy.sh` suben `admin-web/` en despliegue completo.
+- Guía de monitorización: `docs/monitoring.md` (UptimeRobot, cron de purga).
+
+### Cambiado
+
+- `AGENTS.md` actualizado (admin-web, scripts de deploy).
+
 ## [1.0.7] - 2026-07-30
 
 ### Añadido
@@ -113,6 +125,7 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - CLI: `dtunnel --port`, `login`, `register`, `reserve`, `down`.
 - Landing y documentación en `web/`.
 
+[1.0.8]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.4...v1.0.5

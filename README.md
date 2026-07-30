@@ -2,7 +2,7 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Plataforma (web + API):** `1.0.7` · **CLI npm:** `1.0.6`
+**Plataforma (web + API):** `1.0.8` · **CLI npm:** `1.0.6`
 
 ```
 localhost:88080  →  frpc  →  frps (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
@@ -111,5 +111,6 @@ Variables SMTP y admin en `secretos/.env.dtunnel`: `SMTP_*`, `ADMIN_EMAILS`, `DT
 - [Plan de producto](docs/product-plan.md)
 - [Changelog](CHANGELOG.md) · [web](https://dtunnel.desarrollado.com/changelog.html)
 - [Hestia / infra](docs/hestia.md)
+- [Monitorización](docs/monitoring.md)
 - [Arquitectura](docs/architecture.md)
 - [Panel admin](admin-web/README.md)

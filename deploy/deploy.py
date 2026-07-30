@@ -135,7 +135,7 @@ def main() -> int:
         f"ADMIN_EMAILS={admin_emails}",
         f"APP_URL={app_url}",
         f"CORS_ORIGINS={cors}",
-        "API_VERSION=1.0.7",
+        "API_VERSION=1.0.8",
     ]
     for key in ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_NAME"):
         if cfg.get(key):
@@ -201,6 +201,14 @@ def main() -> int:
     print("==> Subiendo web/ a public_html")
     user_client = ssh_connect(host, tunnel_user, cfg["DTUNNEL_PASSWORD"])
     upload_dir_as_tar(user_client, DTUNNEL_ROOT / "web", public_path)
+
+    admin_path = cfg.get("DTUNNEL_ADMIN_PATH_PUBLIC")
+    admin_web = DTUNNEL_ROOT / "admin-web"
+    if admin_path and admin_web.is_dir():
+        print("==> Subiendo admin-web/ a public_html admin")
+        upload_dir_as_tar(user_client, admin_web, admin_path)
+    elif admin_path:
+        print("WARN: admin-web/ no encontrado — omitiendo panel admin", file=sys.stderr)
     user_client.close()
 
     print("==> Verificación")
@@ -213,7 +221,6 @@ def main() -> int:
     print(f"  Landing: https://{domain}")
     print("  Admin:   https://dtunnel-admin.desarrollado.com")
     print(f"  API:     https://{domain}/api/health")
-    print("  Admin deploy: python deploy/upload-admin.py")
     print("  CLI:     npm install -g @desarrollado/dtunnel && dtunnel --port 88080")
     return 0
 

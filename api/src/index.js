@@ -47,7 +47,7 @@ const APP_URL = process.env.APP_URL || 'https://dtunnel.desarrollado.com';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const API_VERSION = process.env.API_VERSION || '1.0.7';
+const API_VERSION = process.env.API_VERSION || '1.0.8';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const FRPS_TOKEN = process.env.FRPS_TOKEN || '';
 const FRPS_SERVER = process.env.FRPS_SERVER || 'dtunnel.desarrollado.com';

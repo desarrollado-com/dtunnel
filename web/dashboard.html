@@ -70,10 +70,11 @@
             <th>Puerto local</th>
             <th>URL</th>
             <th>Desde</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="tunnels-body">
-          <tr><td colspan="4" class="text-muted">Cargando…</td></tr>
+          <tr><td colspan="5" class="text-muted">Cargando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -96,6 +97,17 @@ dtunnel down                        # al terminar (la reserva sigue)</code></pre
       return new Date(value.includes('T') ? value : `${value}Z`).toLocaleString('es');
     }
 
+    async function closeTunnel(subdomain) {
+      if (!confirm(`¿Cerrar el túnel "${subdomain}"? La reserva del nombre no se elimina.`)) return;
+      const res = await fetch(`/api/tunnels/${encodeURIComponent(subdomain)}`, { method: 'DELETE', headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'No se pudo cerrar el túnel');
+        return;
+      }
+      loadTunnels();
+    }
+
     async function loadTunnels() {
       const tbody = document.getElementById('tunnels-body');
       try {
@@ -109,11 +121,15 @@ dtunnel down                        # al terminar (la reserva sigue)</code></pre
               <td>${t.port}</td>
               <td><a href="${t.httpsUrl}" target="_blank" rel="noopener">${t.subdomain}.dtunnel.desarrollado.com</a></td>
               <td>${fmtDate(t.createdAt)}</td>
+              <td><button type="button" class="btn btn-ghost btn-sm" data-close-tunnel="${t.subdomain}">Cerrar</button></td>
             </tr>
           `).join('')
-          : '<tr><td colspan="4" class="text-muted">Ningún túnel activo. Abre uno con el CLI.</td></tr>';
+          : '<tr><td colspan="5" class="text-muted">Ningún túnel activo. Abre uno con el CLI.</td></tr>';
+        tbody.querySelectorAll('[data-close-tunnel]').forEach((btn) => {
+          btn.addEventListener('click', () => closeTunnel(btn.dataset.closeTunnel));
+        });
       } catch {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No se pudieron cargar los túneles</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted">No se pudieron cargar los túneles</td></tr>';
       }
     }
 
