@@ -306,6 +306,11 @@ export function releaseTunnel(subdomain, userId = undefined) {
   return { released: true, id: row.id };
 }
 
+export function releaseAllAnonymousTunnels() {
+  const result = db.prepare('DELETE FROM active_tunnels WHERE user_id IS NULL').run();
+  return result.changes;
+}
+
 export function cleanupStaleTunnels(maxAgeHours = 2) {
   const result = db.prepare(`
     DELETE FROM active_tunnels

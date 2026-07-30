@@ -1,7 +1,7 @@
 /**
  * Descarga frpc a ~/.dtunnel/bin/ (misma versión que el instalador curl).
  */
-import { createWriteStream, existsSync, mkdirSync, chmodSync, copyFileSync, rmSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, chmodSync, copyFileSync, rmSync, readdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { execSync } from 'child_process';
@@ -49,20 +49,38 @@ function download(url, dest) {
   });
 }
 
-function extractZip(archive, workDir, archiveBase) {
+function findFileRecursive(dir, name) {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      const found = findFileRecursive(full, name);
+      if (found) return found;
+    } else if (entry === name) {
+      return full;
+    }
+  }
+  return null;
+}
+
+function extractZip(archive, workDir) {
   const tmp = join(workDir, 'extract');
   rmSync(tmp, { recursive: true, force: true });
   mkdirSync(tmp, { recursive: true });
-  if (process.platform === 'win32') {
-    execSync(
-      `powershell -NoProfile -Command "Expand-Archive -Path '${archive.replace(/'/g, "''")}' -DestinationPath '${tmp.replace(/'/g, "''")}' -Force"`,
-      { stdio: 'ignore' },
-    );
-  } else {
-    execSync(`unzip -qo "${archive}" -d "${tmp}"`, { stdio: 'ignore' });
+  try {
+    execSync(`tar -xf "${archive}" -C "${tmp}"`, { stdio: 'ignore' });
+  } catch {
+    if (process.platform === 'win32') {
+      execSync(
+        `powershell -NoProfile -Command "Expand-Archive -Path '${archive.replace(/'/g, "''")}' -DestinationPath '${tmp.replace(/'/g, "''")}' -Force"`,
+        { stdio: 'ignore' },
+      );
+    } else {
+      execSync(`unzip -qo "${archive}" -d "${tmp}"`, { stdio: 'ignore' });
+    }
   }
-  const src = join(tmp, archiveBase, IS_WIN ? 'frpc.exe' : 'frpc');
-  if (!existsSync(src)) throw new Error('frpc no encontrado en el archivo');
+  const frpcName = IS_WIN ? 'frpc.exe' : 'frpc';
+  const src = findFileRecursive(tmp, frpcName);
+  if (!src) throw new Error('frpc no encontrado en el archivo');
   copyFileSync(src, LOCAL_FRPC);
 }
 
@@ -103,7 +121,7 @@ export async function ensureFrpcBinary({ quiet = false } = {}) {
     execSync(`tar -xzf "${archivePath}" -C "${workDir}" "${memberPath}"`, { stdio: 'ignore' });
     copyFileSync(extracted, LOCAL_FRPC);
   } else {
-    extractZip(archivePath, workDir, archiveBase);
+    extractZip(archivePath, workDir);
   }
 
   if (!IS_WIN) chmodSync(LOCAL_FRPC, 0o755);

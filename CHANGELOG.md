@@ -5,6 +5,18 @@ Todos los cambios notables de dtunnel se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.5] - 2026-07-30
+
+### Añadido
+
+- `DELETE /api/tunnels/anonymous` — libera túneles anónimos huérfanos en el servidor.
+
+### Corregido
+
+- La API reclama automáticamente el slot anónimo al crear un túnel sin sesión.
+- CLI npm/bash reintenta tras liberar el slot anónimo si no hay `tunnel.json` local.
+- Extracción de `frpc` en Windows (zip con estructura anidada).
+
 ## [1.0.4] - 2026-07-30
 
 ### Añadido

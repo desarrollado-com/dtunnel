@@ -94,6 +94,18 @@ async function releaseTunnelRemote(subdomain) {
   }
 }
 
+async function reclaimAnonymousSlot() {
+  const cfg = loadConfig();
+  if (cfg.token) return false;
+  const base = process.env.DTUNNEL_API_URL || cfg.apiUrl || DEFAULT_API;
+  try {
+    const res = await fetch(`${base}/tunnels/anonymous`, { method: 'DELETE' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function releaseStaleTunnel() {
   const stale = getStaleTunnelState();
   if (!stale?.subdomain) return;
@@ -246,13 +258,25 @@ async function cmdUp(args) {
       body: JSON.stringify(body),
     });
   } catch (err) {
-    if (String(err.message).includes('Límite de túneles')) {
+    if (String(err.message).includes('Límite de túneles') && !loadConfig().token) {
+      if (await reclaimAnonymousSlot()) {
+        data = await apiFetch('/tunnels', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+      } else {
+        console.error(err.message);
+        console.error('Ejecuta: dtunnel down');
+        console.error('Si el túnel ya no corre localmente, dtunnel down libera el registro en el servidor.');
+        process.exit(1);
+      }
+    } else if (String(err.message).includes('Límite de túneles')) {
       console.error(err.message);
       console.error('Ejecuta: dtunnel down');
-      console.error('Si el túnel ya no corre localmente, dtunnel down libera el registro en el servidor.');
       process.exit(1);
+    } else {
+      throw err;
     }
-    throw err;
   }
 
   const frpc = await ensureFrpcBinary();
@@ -312,6 +336,10 @@ async function cmdDown() {
     } catch (err) {
       console.warn(`No se pudo liberar en el servidor: ${err.message}`);
     }
+  } else if (!loadConfig().token) {
+    try {
+      await reclaimAnonymousSlot();
+    } catch { /* ignore */ }
   }
 
   if (existsSync(PID_FILE)) unlinkSync(PID_FILE);

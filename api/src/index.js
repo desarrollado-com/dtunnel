@@ -21,6 +21,7 @@ import {
   publicUser,
   verifyPassword,
   releaseTunnel,
+  releaseAllAnonymousTunnels,
   cleanupStaleTunnels,
 } from './db.js';
 import { createAdminRouter } from './routes/admin.js';
@@ -201,8 +202,16 @@ app.post('/tunnels', authOptional, (req, res) => {
   }
 
   const limits = getUserLimits(dbUser, getAnonTunnelLimit(ANON_LIMIT));
-  if (countActiveTunnels(userId) >= limits.tunnelLimit) {
-    return res.status(429).json({ error: `Límite de túneles alcanzado (${limits.tunnelLimit})` });
+  let activeCount = countActiveTunnels(userId);
+  if (activeCount >= limits.tunnelLimit) {
+    if (userId == null) {
+      cleanupStaleTunnels(STALE_TUNNEL_HOURS);
+      releaseAllAnonymousTunnels();
+      activeCount = countActiveTunnels(userId);
+    }
+    if (activeCount >= limits.tunnelLimit) {
+      return res.status(429).json({ error: `Límite de túneles alcanzado (${limits.tunnelLimit})` });
+    }
   }
 
   let subdomain = (req.body?.subdomain || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -243,6 +252,14 @@ app.post('/tunnels', authOptional, (req, res) => {
     token: FRPS_TOKEN,
     persistent: Boolean(userId && req.body?.subdomain),
   });
+});
+
+app.delete('/tunnels/anonymous', authOptional, (req, res) => {
+  if (req.user?.userId) {
+    return res.status(403).json({ error: 'Solo para sesiones anónimas' });
+  }
+  const removed = releaseAllAnonymousTunnels();
+  res.json({ ok: true, removed });
 });
 
 app.delete('/tunnels/:subdomain', authOptional, (req, res) => {

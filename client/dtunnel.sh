@@ -3,7 +3,7 @@
 # También disponible vía: npm install -g @desarrollado/dtunnel
 set -euo pipefail
 
-DTUNNEL_CLI_VERSION="1.0.4"
+DTUNNEL_CLI_VERSION="1.0.5"
 FRP_VERSION="${FRP_VERSION:-0.61.1}"
 FRPC_BIN_DIR="${CONFIG_DIR}/bin"
 LOCAL_FRPC="${FRPC_BIN_DIR}/frpc"
@@ -120,6 +120,30 @@ api_get() {
   rm -f "$tmp"
 }
 
+api_post_try() {
+  local path="$1"
+  local body="$2"
+  local auth="${3:-}"
+  local tmp code
+  tmp="$(mktemp)"
+  if [ -n "$auth" ]; then
+    code=$(curl -sS -o "$tmp" -w '%{http_code}' -X POST \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${auth}" \
+      -d "$body" "${DTUNNEL_API_URL}${path}")
+  else
+    code=$(curl -sS -o "$tmp" -w '%{http_code}' -X POST \
+      -H "Content-Type: application/json" \
+      -d "$body" "${DTUNNEL_API_URL}${path}")
+  fi
+  if [ "$code" -ge 400 ]; then
+    rm -f "$tmp"
+    return 1
+  fi
+  cat "$tmp"
+  rm -f "$tmp"
+}
+
 api_post() {
   local path="$1"
   local body="$2"
@@ -175,6 +199,13 @@ release_stale_tunnel() {
   token="$(load_token)"
   api_delete "/tunnels/${sub}" "$token" || true
   clear_tunnel_state
+}
+
+reclaim_anonymous_slot() {
+  local token
+  token="$(load_token)"
+  [ -z "$token" ] || return 1
+  api_delete "/tunnels/anonymous" "" || return 1
 }
 
 load_token() {
@@ -322,13 +353,17 @@ cmd_up() {
   [ -n "$subdomain" ] && body="${body},\"subdomain\":\"${subdomain}\""
   body="${body}}"
 
-  local token
+  local token resp
   token="$(load_token)"
-  local resp
   if [ -n "$token" ]; then
     resp="$(api_post "/tunnels" "$body" "$token")"
+  elif resp="$(api_post_try "/tunnels" "$body")"; then
+    :
+  elif reclaim_anonymous_slot && resp="$(api_post_try "/tunnels" "$body")"; then
+    :
   else
-    resp="$(api_post "/tunnels" "$body")"
+    echo "ERROR: Límite de túneles alcanzado. Ejecuta: dtunnel down" >&2
+    exit 1
   fi
 
   local server server_port frp_token sub http_url https_url
@@ -367,6 +402,8 @@ cmd_down() {
   if [ -n "$sub" ]; then
     token="$(load_token)"
     api_delete "/tunnels/${sub}" "$token" || echo "WARN: no se pudo liberar ${sub} en el servidor" >&2
+  elif [ -z "$(load_token)" ]; then
+    reclaim_anonymous_slot || true
   fi
   clear_tunnel_state
   echo "Túnel detenido"

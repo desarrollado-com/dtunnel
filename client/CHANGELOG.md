@@ -2,6 +2,14 @@
 
 Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
 
+## [1.0.5] - 2026-07-30
+
+### Corregido
+
+- Reclama automáticamente el slot anónimo huérfano en el servidor (sin `tunnel.json` local).
+- `dtunnel down` sin estado local libera túneles anónimos en la API.
+- Extracción de `frpc` en Windows (búsqueda recursiva en el zip).
+
 ## [1.0.4] - 2026-07-30
 
 ### Corregido
