@@ -188,6 +188,106 @@ md-outlined-text-field {
   border-radius: var(--md-sys-shape-corner-large);
   padding: 1.5rem;
 }
+
+.features article {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
+  color: var(--md-sys-color-primary);
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.feature-icon .material-symbols-outlined {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.features article h3 { margin-bottom: 0.5rem; }
+.features article p { max-width: 22ch; }
+
+/* Diagramas Mermaid */
+.diagram-section { margin-top: 2rem; }
+.diagram-section h3 {
+  font-size: 1.15rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  color: var(--md-sys-color-on-surface);
+}
+
+.diagram-card {
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-large);
+  padding: 1.25rem 1rem;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+
+.diagram-card .mermaid {
+  display: flex;
+  justify-content: center;
+  min-width: min(100%, 640px);
+  margin: 0 auto;
+}
+
+.diagram-card .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.flow-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0 2rem;
+  list-style: none;
+  padding: 0;
+  counter-reset: flow;
+}
+
+.flow-steps li {
+  counter-increment: flow;
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  padding: 1rem 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  position: relative;
+}
+
+.flow-steps li::before {
+  content: counter(flow);
+  display: block;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: 500;
+  font-size: 0.8rem;
+  margin: 0 auto 0.5rem;
+}
+
+.section-intro {
+  color: var(--md-sys-color-on-surface-variant);
+  max-width: 640px;
+  margin-bottom: 2rem;
+  line-height: 1.7;
+}
 .card-featured { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-high); }
 .card h3, .grid article h3 { margin-bottom: 0.5rem; font-weight: 500; }
 .price { font-size: 2rem; font-weight: 400; margin-bottom: 1rem; }

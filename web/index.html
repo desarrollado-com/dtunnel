@@ -25,6 +25,7 @@
     </div>
     <nav class="nav">
       <a href="#comenzar">Comenzar</a>
+      <a href="#arquitectura">Arquitectura</a>
       <a href="/docs.html">Documentación</a>
       <a href="/changelog.html">Changelog</a>
       <a href="#ayuda">Ayuda</a>
@@ -81,26 +82,130 @@ dtunnel --port 88080</code></pre>
       <h2>Funciona con todo</h2>
       <div class="grid">
         <article>
-          <span class="material-symbols-outlined" style="color:var(--md-sys-color-primary)">code</span>
+          <div class="feature-icon"><span class="material-symbols-outlined">code</span></div>
           <h3>Node / React / Vite</h3>
           <p class="text-muted">Dev servers en cualquier puerto.</p>
         </article>
         <article>
-          <span class="material-symbols-outlined" style="color:var(--md-sys-color-primary)">deployed_code</span>
+          <div class="feature-icon"><span class="material-symbols-outlined">deployed_code</span></div>
           <h3>Docker / K8s</h3>
           <p class="text-muted">Contenedores con puerto mapeado a localhost.</p>
         </article>
         <article>
-          <span class="material-symbols-outlined" style="color:var(--md-sys-color-primary)">dns</span>
+          <div class="feature-icon"><span class="material-symbols-outlined">dns</span></div>
           <h3>Nginx / APIs</h3>
           <p class="text-muted">REST, JSON, archivos estáticos.</p>
         </article>
         <article>
-          <span class="material-symbols-outlined" style="color:var(--md-sys-color-primary)">sync_alt</span>
+          <div class="feature-icon"><span class="material-symbols-outlined">sync_alt</span></div>
           <h3>WebSocket</h3>
           <p class="text-muted">WSS a través del túnel sin config extra.</p>
         </article>
       </div>
+    </section>
+
+    <section id="arquitectura" class="section">
+      <h2>Cómo funciona</h2>
+      <p class="section-intro">
+        Sin abrir puertos en tu router: tu app sigue en <code>localhost</code> y dtunnel crea un puente seguro
+        hacia Internet a través del VPS <code>dtunnel.desarrollado.com</code>.
+      </p>
+
+      <ol class="flow-steps">
+        <li>Instalas el CLI</li>
+        <li>Levantas tu app local</li>
+        <li><code>dtunnel --port N</code></li>
+        <li>URL HTTPS pública</li>
+        <li>Visitantes / webhooks</li>
+      </ol>
+
+      <div class="diagram-section">
+        <h3>Arquitectura general</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">flowchart TB
+  subgraph INET["Internet"]
+    U["Visitante / Webhook"]
+  end
+
+  subgraph VPS["VPS — HestiaCP"]
+    NG["Nginx :443 TLS"]
+    WEB["Landing · Docs · Admin"]
+    API["API Node :3001"]
+    FRPS["frps broker\n:18080 HTTP · :7000 control"]
+    NG -->|"dtunnel.desarrollado.com"| WEB
+    NG -->|"/api/*"| API
+    NG -->|"*.dtunnel.desarrollado.com"| FRPS
+  end
+
+  subgraph DEV["Tu máquina"]
+    CLI["dtunnel CLI"]
+    FRPC["frpc cliente"]
+    APP["localhost:PUERTO\n(tu app)"]
+    CLI -->|"POST /api/tunnels"| API
+    CLI -->|"genera config"| FRPC
+    FRPC --> APP
+  end
+
+  U -->|"HTTPS"| NG
+  FRPC <-->|"túnel TCP :7000"| FRPS</pre>
+        </div>
+      </div>
+
+      <div class="diagram-section">
+        <h3>Flujo de una petición</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">sequenceDiagram
+  autonumber
+  participant Dev as Desarrollador
+  participant CLI as dtunnel CLI
+  participant API as API
+  participant FRPC as frpc
+  participant FRPS as frps
+  participant NG as Nginx
+  participant User as Visitante
+
+  Dev->>CLI: dtunnel --port 88080
+  CLI->>API: POST /api/tunnels
+  API-->>CLI: subdominio + token frp
+  CLI->>FRPC: iniciar con frpc.toml
+  FRPC->>FRPS: conectar :7000
+
+  User->>NG: GET https://mi-app.dtunnel.desarrollado.com
+  NG->>FRPS: proxy HTTP
+  FRPS->>FRPC: reenviar al túnel activo
+  FRPC->>Dev: http://127.0.0.1:88080
+  Dev-->>User: respuesta HTTP/HTTPS</pre>
+        </div>
+      </div>
+
+      <div class="diagram-section">
+        <h3>Componentes en el VPS</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">flowchart LR
+  subgraph Publico["Expuesto a Internet"]
+    P443["Nginx :443"]
+    P7000["frps :7000\ncontrol clientes"]
+  end
+
+  subgraph Interno["Solo localhost / red interna"]
+    P3001["API :3001"]
+    P18080["frps :18080\nvhost HTTP"]
+  end
+
+  P443 --> P3001
+  P443 --> P18080
+  P7000 --> FRPS["frps"]
+  FRPS --> P18080
+
+  style P443 fill:#2b4278,color:#dce1ff
+  style P7000 fill:#2b4278,color:#dce1ff</pre>
+        </div>
+      </div>
+
+      <p class="text-muted">
+        Más detalle en la <a href="/docs.html#como-funciona">documentación técnica</a>
+        y en <a href="https://github.com/desarrollado-com/dtunnel/blob/main/docs/architecture.md" target="_blank" rel="noopener">architecture.md</a>.
+      </p>
     </section>
 
     <section id="precios" class="section pricing">
@@ -153,6 +258,7 @@ dtunnel --port 88080</code></pre>
     </p>
   </footer>
   <script src="/js/main.js"></script>
+  <script src="/js/mermaid-init.js" type="module"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>

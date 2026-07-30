@@ -364,20 +364,88 @@ Authorization: Bearer &lt;token&gt;
       <!-- Cómo funciona -->
       <section id="como-funciona" class="docs-section">
         <h2>Cómo funciona</h2>
-        <pre class="docs-diagram"><code>Internet
-   │
-   ▼ HTTPS (443)
-┌──────────────────────────────────────┐
-│ VPS — Nginx (Hestia)                 │
-│   dtunnel.desarrollado.com → web/API │
-│   *.dtunnel.desarrollado.com → frps  │
-└──────────────┬───────────────────────┘
-               │ TCP 7000
-               ▼
-        Tu PC — frpc + dtunnel CLI
-               │
-               ▼
-        localhost:PUERTO (tu app)</code></pre>
+        <p>
+          dtunnel conecta tu <code>localhost</code> con una URL pública HTTPS bajo
+          <code>*.dtunnel.desarrollado.com</code>. No necesitas abrir puertos en el router ni configurar DNS.
+        </p>
+
+        <h3>Arquitectura</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">flowchart TB
+  subgraph INET["Internet"]
+    U["Cliente HTTP / Webhook"]
+  end
+
+  subgraph VPS["VPS HestiaCP"]
+    NG["Nginx :443"]
+    WEB["Web estática + Admin"]
+    API["API Node :3001"]
+    FRPS["frps :18080 / :7000"]
+    NG --> WEB
+    NG --> API
+    NG --> FRPS
+  end
+
+  subgraph PC["Tu PC"]
+    CLI["dtunnel CLI"]
+    FRPC["frpc"]
+    APP["127.0.0.1:PUERTO"]
+    CLI --> API
+    CLI --> FRPC
+    FRPC --> APP
+  end
+
+  U -->|HTTPS| NG
+  FRPC <-->|TCP 7000| FRPS</pre>
+        </div>
+
+        <h3>Secuencia: abrir un túnel</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">sequenceDiagram
+  participant Dev as Desarrollador
+  participant CLI as dtunnel CLI
+  participant API as API
+  participant FRPC as frpc
+  participant FRPS as frps
+
+  Dev->>CLI: dtunnel --port 88080
+  CLI->>API: POST /api/tunnels
+  API-->>CLI: subdomain, token, server
+  CLI->>FRPC: frpc -c ~/.dtunnel/frpc.toml
+  FRPC->>FRPS: auth + registro subdominio
+  Note over FRPC,FRPS: Túnel activo mientras frpc corre</pre>
+        </div>
+
+        <h3>Secuencia: visita HTTP</h3>
+        <div class="diagram-card">
+          <pre class="mermaid">sequenceDiagram
+  participant User as Visitante
+  participant NG as Nginx
+  participant FRPS as frps
+  participant FRPC as frpc
+  participant App as localhost:88080
+
+  User->>NG: GET https://mi-app.dtunnel.desarrollado.com
+  NG->>FRPS: proxy a vhost :18080
+  FRPS->>FRPC: túnel del subdominio mi-app
+  FRPC->>App: GET http://127.0.0.1:88080
+  App-->>User: respuesta</pre>
+        </div>
+
+        <h3>Puertos en el VPS</h3>
+        <table class="docs-table">
+          <thead>
+            <tr><th>Componente</th><th>Puerto</th><th>Acceso</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Nginx (TLS)</td><td>443</td><td>Público</td></tr>
+            <tr><td>API Node</td><td>3001</td><td>Solo vía <code>/api</code> en apex</td></tr>
+            <tr><td>frps vhost HTTP</td><td>18080</td><td>Interno (Nginx → frps)</td></tr>
+            <tr><td>frps control</td><td>7000</td><td>Público (clientes <code>frpc</code>)</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Resumen en 5 pasos</h3>
         <ol class="docs-list">
           <li>El CLI pide un subdominio a la API y lanza <code>frpc</code>.</li>
           <li><code>frpc</code> se conecta al broker (puerto 7000) con autenticación por token.</li>
@@ -503,6 +571,7 @@ Authorization: Bearer &lt;token&gt;
   </footer>
   <script src="/js/main.js"></script>
   <script src="/js/docs.js"></script>
+  <script src="/js/mermaid-init.js" type="module"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>

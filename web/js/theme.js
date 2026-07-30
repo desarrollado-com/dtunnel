@@ -14,6 +14,7 @@
       localStorage.setItem(KEY, theme);
     } catch { /* ignore */ }
     updateFab(theme);
+    document.dispatchEvent(new CustomEvent('dtunnel-theme-change', { detail: { theme } }));
   }
 
   function updateFab(theme) {
