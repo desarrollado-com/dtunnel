@@ -2,7 +2,7 @@
 
 CLI para exponer un servidor local como URL pública `https://*.dtunnel.desarrollado.com`.
 
-**Versión actual:** `1.0.3`
+**Versión actual:** `1.0.5`
 
 - **npm:** [@desarrollado/dtunnel](https://www.npmjs.com/package/@desarrollado/dtunnel)
 - **Código:** [github.com/desarrollado-com/dtunnel](https://github.com/desarrollado-com/dtunnel)

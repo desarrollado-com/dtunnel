@@ -36,6 +36,54 @@
     <p class="lead">Historial de versiones del CLI, instalador curl, web y API.
       También en <a href="https://github.com/desarrollado-com/dtunnel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">GitHub</a>.</p>
 
+    <article class="changelog-entry" id="v1-0-5">
+      <header class="changelog-header">
+        <h2><a href="#v1-0-5">1.0.5</a></h2>
+        <time datetime="2026-07-30">30 jul 2026</time>
+      </header>
+
+      <h3>Añadido</h3>
+      <ul class="docs-list">
+        <li><code>DELETE /api/tunnels/anonymous</code> — libera túneles anónimos huérfanos en el servidor.</li>
+      </ul>
+
+      <h3>Corregido</h3>
+      <ul class="docs-list">
+        <li>La API reclama el slot anónimo al crear un túnel sin sesión.</li>
+        <li>CLI npm/bash reintenta tras liberar el slot si no hay <code>tunnel.json</code> local.</li>
+        <li>Extracción de <code>frpc</code> en Windows.</li>
+      </ul>
+
+      <h3>Web</h3>
+      <ul class="docs-list">
+        <li>Documentación y dashboard: aclaración de subdominios, reservas y túneles activos.</li>
+      </ul>
+
+      <p class="changelog-install">
+        <strong>Actualizar:</strong>
+        <code>npm install -g @desarrollado/dtunnel@latest</code>
+      </p>
+    </article>
+
+    <article class="changelog-entry" id="v1-0-4">
+      <header class="changelog-header">
+        <h2><a href="#v1-0-4">1.0.4</a></h2>
+        <time datetime="2026-07-30">30 jul 2026</time>
+      </header>
+
+      <h3>Añadido</h3>
+      <ul class="docs-list">
+        <li><code>DELETE /api/tunnels/:subdomain</code> — libera el túnel en el servidor al hacer <code>dtunnel down</code>.</li>
+        <li>Limpieza automática de túneles huérfanos en la API (&gt; 2 h).</li>
+      </ul>
+
+      <h3>Corregido</h3>
+      <ul class="docs-list">
+        <li>Error «Límite de túneles alcanzado» por registros fantasma tras cerrar el CLI.</li>
+        <li><code>dtunnel --port</code> libera túneles locales muertos antes de crear uno nuevo.</li>
+      </ul>
+    </article>
+
     <article class="changelog-entry" id="v1-0-3">
       <header class="changelog-header">
         <h2><a href="#v1-0-3">1.0.3</a></h2>
@@ -110,7 +158,7 @@
   </main>
 
   <footer class="footer">
-    <p>dtunnel v1.0.3 ·
+    <p>dtunnel v1.0.5 ·
       <a href="/">Inicio</a> ·
       <a href="/docs.html">Documentación</a> ·
       <a href="https://github.com/desarrollado-com/dtunnel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md</a>

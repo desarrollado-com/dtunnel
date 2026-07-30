@@ -21,7 +21,7 @@ Servicio self-hosted tipo [Tunnelmole](https://github.com/robbie-cahill/tunnelmo
 |---------|-----|
 | Sitio | https://dtunnel.desarrollado.com |
 | Instalador | https://install.desarrollado.com/dtunnel/install |
-| npm | https://www.npmjs.com/package/@desarrollado/dtunnel | CLI v1.0.3 |
+| npm | https://www.npmjs.com/package/@desarrollado/dtunnel | CLI v1.0.5 |
 | Changelog | https://dtunnel.desarrollado.com/changelog.html | Historial de versiones |
 | Admin | https://dtunnel.desarrollado.com/admin.html | Panel superadmin |
 | GitHub | https://github.com/desarrollado-com/dtunnel |

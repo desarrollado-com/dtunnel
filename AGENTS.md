@@ -13,7 +13,7 @@ Self-hosted HTTP tunnel (Tunnelmole / ngrok style):
 - **client/**: CLI npm `@desarrollado/dtunnel` (auto-instala `frpc` en `~/.dtunnel/bin/`)
 - **install/dtunnel/**: instalador curl (frpc + CLI bash)
 - **web/**: landing, docs, changelog, admin → `public_html` en Hestia
-- **deploy/**: scripts Python de despliegue (`deploy.py`, `upload-web.py`, `upload-install.py`)
+- **deploy/**: scripts Python de despliegue (`deploy.py`, `upload-web.py`, `upload-api.py`, `upload-install.py`, `tunnels.py`)
 
 ## Comandos
 

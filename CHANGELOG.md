@@ -17,6 +17,10 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - CLI npm/bash reintenta tras liberar el slot anónimo si no hay `tunnel.json` local.
 - Extracción de `frpc` en Windows (zip con estructura anidada).
 
+### Web
+
+- Documentación y dashboard: aclaración de subdominios, reservas y túneles activos.
+
 ## [1.0.4] - 2026-07-30
 
 ### Añadido
@@ -78,6 +82,7 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - CLI: `dtunnel --port`, `login`, `register`, `reserve`, `down`.
 - Landing y documentación en `web/`.
 
+[1.0.5]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/desarrollado-com/dtunnel/compare/v1.0.1...v1.0.2

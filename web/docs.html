@@ -102,7 +102,7 @@
       <!-- Instalación -->
       <section id="instalacion" class="docs-section">
         <h2>Instalación</h2>
-        <p>Versión actual del CLI: <strong>1.0.3</strong> · Comprueba la tuya con <code>dtunnel version</code></p>
+        <p>Versión actual del CLI: <strong>1.0.5</strong> · Comprueba la tuya con <code>dtunnel version</code></p>
 
         <h3>Instalador universal (Linux, macOS y WSL)</h3>
         <p>Este método instala automáticamente la versión correcta de <code>frpc</code> y el CLI
@@ -118,7 +118,7 @@
           Requiere Node.js 16 o superior. <code>frpc</code> se descarga automáticamente la primera vez que abres un túnel
           (o con <code>dtunnel install-frpc</code>) en <code>~/.dtunnel/bin/</code>.</p>
         <pre><code>npm install -g @desarrollado/dtunnel</code></pre>
-        <p>Paquete en <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npmjs.com/@desarrollado/dtunnel</a> (v1.0.3).</p>
+        <p>Paquete en <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npmjs.com/@desarrollado/dtunnel</a> (v1.0.5).</p>
         <p>Comprueba la instalación:</p>
         <pre><code>dtunnel version
 dtunnel --help</code></pre>
@@ -130,7 +130,7 @@ dtunnel --help</code></pre>
         <p>Consulta el <a href="/changelog.html">changelog</a> para ver qué incluye cada versión.</p>
         <p>Primero comprueba qué versión tienes instalada:</p>
         <pre><code>dtunnel version</code></pre>
-        <p>Versión publicada actualmente: <strong>1.0.3</strong></p>
+        <p>Versión publicada actualmente: <strong>1.0.5</strong></p>
 
         <h3>Linux / macOS / WSL (instalador curl)</h3>
         <p>Vuelve a ejecutar el instalador; sobrescribe <code>frpc</code> y <code>dtunnel</code> en <code>/usr/local/bin</code>:</p>
@@ -141,7 +141,7 @@ dtunnel version</code></pre>
         <pre><code>npm install -g @desarrollado/dtunnel@latest
 dtunnel version</code></pre>
         <p>Para instalar una versión concreta:</p>
-        <pre><code>npm install -g @desarrollado/dtunnel@1.0.3</code></pre>
+        <pre><code>npm install -g @desarrollado/dtunnel@1.0.5</code></pre>
 
         <h3>Windows sin WSL</h3>
         <p>Usa npm (arriba). Para actualizar solo <code>frpc</code>: <code>dtunnel install-frpc</code>
@@ -243,7 +243,7 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
           <li><code>~/.dtunnel/config.json</code> — token de sesión (si hiciste login)</li>
           <li><code>~/.dtunnel/tunnel.json</code> — estado del túnel activo (subdominio, URLs, PID)</li>
           <li><code>~/.dtunnel/frpc.toml</code> — configuración generada al abrir túnel</li>
-          <li><code>~/.dtunnel/bin/frpc</code> — binario del cliente (auto-instalado en v1.0.3+)</li>
+          <li><code>~/.dtunnel/bin/frpc</code> — binario del cliente (auto-instalado en v1.0.5+)</li>
           <li><code>~/.dtunnel/frpc.pid</code> — PID del proceso frpc activo</li>
         </ul>
       </section>
@@ -627,7 +627,7 @@ Authorization: Bearer &lt;token&gt;
         <h2>Solución de problemas</h2>
 
         <h3><code>Instala frpc</code> al ejecutar dtunnel</h3>
-        <p>En v1.0.3+ el CLI intenta descargar <code>frpc</code> automáticamente. Si falla, ejecuta
+        <p>En v1.0.5+ el CLI intenta descargar <code>frpc</code> automáticamente. Si falla, ejecuta
           <code>dtunnel install-frpc</code> o usa el instalador curl (Linux/macOS/WSL). Comprueba con
           <code>frpc --version</code> o <code>~/.dtunnel/bin/frpc --version</code>.</p>
 
@@ -780,7 +780,7 @@ Authorization: Bearer &lt;token&gt;
   </div>
 
   <footer class="footer">
-    <p>dtunnel v1.0.3 · <a href="/">Inicio</a> · <a href="/changelog.html">Changelog</a> · <a href="https://m3.material.io/" target="_blank" rel="noopener">Material Design 3</a></p>
+    <p>dtunnel v1.0.5 · <a href="/">Inicio</a> · <a href="/changelog.html">Changelog</a> · <a href="https://m3.material.io/" target="_blank" rel="noopener">Material Design 3</a></p>
   </footer>
   <script src="/js/main.js"></script>
   <script src="/js/docs.js"></script>
