@@ -22,6 +22,7 @@
     <nav class="nav">
       <a href="/">Inicio</a>
       <a href="/docs.html">Documentación</a>
+      <a href="/changelog.html">Changelog</a>
       <div class="nav-actions">
         <md-outlined-button href="/register.html">Registrarse</md-outlined-button>
         <md-filled-button href="/login.html">Iniciar sesión</md-filled-button>
@@ -37,6 +38,7 @@
         <a href="#requisitos">Requisitos</a>
         <a href="#instalacion">Instalación</a>
         <a href="#actualizacion">Actualización</a>
+        <a href="/changelog.html">Changelog</a>
         <a href="#inicio-rapido">Inicio rápido</a>
         <a href="#cli">Referencia CLI</a>
         <a href="#cuentas">Cuentas y subdominios</a>
@@ -99,7 +101,7 @@
       <!-- Instalación -->
       <section id="instalacion" class="docs-section">
         <h2>Instalación</h2>
-        <p>Versión actual del CLI: <strong>1.0.2</strong> · Comprueba la tuya con <code>dtunnel version</code></p>
+        <p>Versión actual del CLI: <strong>1.0.3</strong> · Comprueba la tuya con <code>dtunnel version</code></p>
 
         <h3>Instalador universal (Linux, macOS y WSL)</h3>
         <p>Este método instala automáticamente la versión correcta de <code>frpc</code> y el CLI
@@ -112,10 +114,10 @@
 
         <h3>Instalar con Node.js</h3>
         <p>La mejor opción para desarrolladores Node.js/JavaScript/TypeScript o Windows sin WSL.
-          Requiere Node.js 16 o superior. Debes instalar <code>frpc</code> por separado desde
-          <a href="https://github.com/fatedier/frp/releases" target="_blank" rel="noopener">frp releases</a>.</p>
+          Requiere Node.js 16 o superior. <code>frpc</code> se descarga automáticamente la primera vez que abres un túnel
+          (o con <code>dtunnel install-frpc</code>) en <code>~/.dtunnel/bin/</code>.</p>
         <pre><code>npm install -g @desarrollado/dtunnel</code></pre>
-        <p>Paquete en <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npmjs.com/@desarrollado/dtunnel</a> (v1.0.2).</p>
+        <p>Paquete en <a href="https://www.npmjs.com/package/@desarrollado/dtunnel" target="_blank" rel="noopener">npmjs.com/@desarrollado/dtunnel</a> (v1.0.3).</p>
         <p>Comprueba la instalación:</p>
         <pre><code>dtunnel version
 dtunnel --help</code></pre>
@@ -124,9 +126,10 @@ dtunnel --help</code></pre>
       <!-- Actualización -->
       <section id="actualizacion" class="docs-section">
         <h2>Actualizar dtunnel</h2>
+        <p>Consulta el <a href="/changelog.html">changelog</a> para ver qué incluye cada versión.</p>
         <p>Primero comprueba qué versión tienes instalada:</p>
         <pre><code>dtunnel version</code></pre>
-        <p>Versión publicada actualmente: <strong>1.0.2</strong></p>
+        <p>Versión publicada actualmente: <strong>1.0.3</strong></p>
 
         <h3>Linux / macOS / WSL (instalador curl)</h3>
         <p>Vuelve a ejecutar el instalador; sobrescribe <code>frpc</code> y <code>dtunnel</code> en <code>/usr/local/bin</code>:</p>
@@ -137,11 +140,11 @@ dtunnel version</code></pre>
         <pre><code>npm install -g @desarrollado/dtunnel@latest
 dtunnel version</code></pre>
         <p>Para instalar una versión concreta:</p>
-        <pre><code>npm install -g @desarrollado/dtunnel@1.0.2</code></pre>
+        <pre><code>npm install -g @desarrollado/dtunnel@1.0.3</code></pre>
 
         <h3>Windows sin WSL</h3>
-        <p>Usa npm (arriba). <code>frpc</code> se actualiza por separado desde
-          <a href="https://github.com/fatedier/frp/releases" target="_blank" rel="noopener">frp releases</a>.</p>
+        <p>Usa npm (arriba). Para actualizar solo <code>frpc</code>: <code>dtunnel install-frpc</code>
+          o borra <code>~/.dtunnel/bin/</code> y vuelve a abrir un túnel.</p>
 
         <div class="docs-callout">
           Tras actualizar, los túneles abiertos siguen activos hasta que ejecutes <code>dtunnel down</code>.
@@ -221,6 +224,10 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
               <td>Versión instalada del CLI</td>
             </tr>
             <tr>
+              <td><code>dtunnel install-frpc</code></td>
+              <td>Descargar o actualizar <code>frpc</code> en <code>~/.dtunnel/bin/</code></td>
+            </tr>
+            <tr>
               <td><code>dtunnel down</code></td>
               <td>Detener el proceso <code>frpc</code> local</td>
             </tr>
@@ -235,6 +242,7 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
           <li><code>~/.dtunnel/config.json</code> — token de sesión (si hiciste login)</li>
           <li><code>~/.dtunnel/tunnel.json</code> — estado del túnel activo (subdominio, URLs, PID)</li>
           <li><code>~/.dtunnel/frpc.toml</code> — configuración generada al abrir túnel</li>
+          <li><code>~/.dtunnel/bin/frpc</code> — binario del cliente (auto-instalado en v1.0.3+)</li>
           <li><code>~/.dtunnel/frpc.pid</code> — PID del proceso frpc activo</li>
         </ul>
       </section>
@@ -434,7 +442,9 @@ Authorization: Bearer &lt;token&gt;
         <h2>Solución de problemas</h2>
 
         <h3><code>Instala frpc</code> al ejecutar dtunnel</h3>
-        <p><code>frpc</code> no está en PATH. En Linux/macOS/WSL usa el instalador curl (instala frpc automáticamente) o descarga manualmente desde <a href="https://github.com/fatedier/frp/releases">frp releases</a> y verifica con <code>frpc --version</code>.</p>
+        <p>En v1.0.3+ el CLI intenta descargar <code>frpc</code> automáticamente. Si falla, ejecuta
+          <code>dtunnel install-frpc</code> o usa el instalador curl (Linux/macOS/WSL). Comprueba con
+          <code>frpc --version</code> o <code>~/.dtunnel/bin/frpc --version</code>.</p>
 
         <h3>502 Bad Gateway en la URL pública</h3>
         <ul class="docs-list">
@@ -488,7 +498,7 @@ Authorization: Bearer &lt;token&gt;
   </div>
 
   <footer class="footer">
-    <p>dtunnel v1.0.2 · <a href="/">Inicio</a> · <a href="https://m3.material.io/" target="_blank" rel="noopener">Material Design 3</a></p>
+    <p>dtunnel v1.0.3 · <a href="/">Inicio</a> · <a href="/changelog.html">Changelog</a> · <a href="https://m3.material.io/" target="_blank" rel="noopener">Material Design 3</a></p>
   </footer>
   <script src="/js/main.js"></script>
   <script src="/js/docs.js"></script>

@@ -3,7 +3,10 @@
 # También disponible vía: npm install -g @desarrollado/dtunnel
 set -euo pipefail
 
-DTUNNEL_CLI_VERSION="1.0.2"
+DTUNNEL_CLI_VERSION="1.0.3"
+FRP_VERSION="${FRP_VERSION:-0.61.1}"
+FRPC_BIN_DIR="${CONFIG_DIR}/bin"
+LOCAL_FRPC="${FRPC_BIN_DIR}/frpc"
 DTUNNEL_API_URL="${DTUNNEL_API_URL:-https://dtunnel.desarrollado.com/api}"
 CONFIG_DIR="${HOME}/.dtunnel"
 CONFIG_FILE="${CONFIG_DIR}/config.json"
@@ -24,6 +27,7 @@ dtunnel — URL pública para tu servidor local
   dtunnel register                     Crear cuenta
   dtunnel reserve <nombre>             Reservar subdominio (requiere login)
   dtunnel down                         Detener túnel
+  dtunnel install-frpc                 Descargar frpc a ~/.dtunnel/bin
 
 Variables:
   DTUNNEL_API_URL   ${DTUNNEL_API_URL}
@@ -32,6 +36,60 @@ EOF
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || { echo "ERROR: falta '$1' en PATH"; exit 1; }
+}
+
+detect_platform() {
+  local os arch
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64|amd64) arch="amd64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    armv7l|armv6l) arch="arm" ;;
+    i386|i686) arch="386" ;;
+    *) echo "ERROR: arquitectura no soportada: $arch" >&2; return 1 ;;
+  esac
+  case "$os" in
+    linux)  FRP_OS="linux" ;;
+    darwin) FRP_OS="darwin" ;;
+    *) echo "ERROR: sistema no soportado: $os" >&2; return 1 ;;
+  esac
+  FRP_ARCH="$arch"
+  FRP_PLATFORM="${FRP_OS}_${FRP_ARCH}"
+}
+
+frpc_path() {
+  if [ -x "$LOCAL_FRPC" ]; then
+    echo "$LOCAL_FRPC"
+    return 0
+  fi
+  command -v frpc 2>/dev/null || true
+}
+
+ensure_frpc() {
+  local path
+  path="$(frpc_path)"
+  if [ -n "$path" ]; then
+    echo "$path"
+    return 0
+  fi
+
+  require_cmd curl
+  detect_platform || return 1
+
+  local archive="frp_${FRP_VERSION}_${FRP_PLATFORM}"
+  local url="https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${archive}.tar.gz"
+  local workdir
+  workdir="$(mktemp -d)"
+  trap 'rm -rf "$workdir"' RETURN
+
+  echo "==> Descargando frpc ${FRP_VERSION} (${FRP_PLATFORM})" >&2
+  curl -fsSL "$url" -o "${workdir}/frp.tar.gz"
+  tar -xzf "${workdir}/frp.tar.gz" -C "${workdir}"
+  mkdir -p "$FRPC_BIN_DIR"
+  install -m 755 "${workdir}/${archive}/frpc" "$LOCAL_FRPC"
+  echo "==> frpc instalado en ${LOCAL_FRPC}" >&2
+  echo "$LOCAL_FRPC"
 }
 
 json_get() {
@@ -216,7 +274,8 @@ cmd_up() {
   local port="${1:-}" subdomain="${2:-}"
   [ -n "$port" ] || { usage; exit 1; }
   require_cmd curl
-  require_cmd frpc
+  local frpc_bin
+  frpc_bin="$(ensure_frpc)" || { echo "ERROR: no se pudo instalar frpc"; exit 1; }
 
   if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     echo "Ya hay un túnel activo. Ejecuta: dtunnel down"
@@ -252,7 +311,7 @@ cmd_up() {
   https_url="$(json_get "$resp" httpsUrl)"
 
   write_frpc_toml "$server" "$server_port" "$frp_token" "$sub" "$port"
-  frpc -c "$FRPC_CONF" >/dev/null 2>&1 &
+  "$frpc_bin" -c "$FRPC_CONF" >/dev/null 2>&1 &
   echo $! > "$PID_FILE"
   save_tunnel_state "$!" "$sub" "$port" "$http_url" "$https_url"
   sleep 1
@@ -378,6 +437,12 @@ PY
   fi
 }
 
+cmd_install_frpc() {
+  local path
+  path="$(ensure_frpc)" || exit 1
+  echo "frpc listo: ${path}"
+}
+
 # --- main ---
 CMD="up"
 PORT=""
@@ -401,6 +466,7 @@ while [ $# -gt 0 ]; do
       [ $# -gt 0 ] && shift
       ;;
     down|stop) CMD="down"; shift ;;
+    install-frpc) CMD="install-frpc"; shift ;;
     -h|--help|help) usage; exit 0 ;;
     *)
       if [[ "$1" =~ ^[0-9]+$ ]] && [ -z "$PORT" ]; then PORT="$1"; shift
@@ -416,6 +482,7 @@ case "$CMD" in
   down) cmd_down ;;
   status) cmd_status ;;
   version) cmd_version ;;
+  install-frpc) cmd_install_frpc ;;
   list) cmd_list "$LIST_WHAT" ;;
   up) cmd_up "$PORT" "$SUBDOMAIN" ;;
 esac

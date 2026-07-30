@@ -43,7 +43,7 @@
     <section class="admin-panel" id="panel-users">
       <div class="admin-toolbar">
         <h2>Usuarios</h2>
-        <button type="button" class="btn btn-ghost btn-sm" id="refresh-users">Actualizar</button>
+        <md-outlined-button id="refresh-users">Actualizar</md-outlined-button>
       </div>
       <div class="table-wrap">
         <table class="admin-table" id="users-table">
@@ -66,7 +66,7 @@
     <section class="admin-panel" id="panel-plans">
       <div class="admin-toolbar">
         <h2>Planes y precios</h2>
-        <button type="button" class="btn btn-primary" id="new-plan-btn">Nuevo plan</button>
+        <md-filled-button id="new-plan-btn">Nuevo plan</md-filled-button>
       </div>
       <div class="table-wrap">
         <table class="admin-table" id="plans-table">
@@ -90,7 +90,7 @@
     <section class="admin-panel" id="panel-tunnels">
       <div class="admin-toolbar">
         <h2>Túneles activos</h2>
-        <button type="button" class="btn btn-ghost" id="refresh-tunnels">Actualizar</button>
+        <md-outlined-button id="refresh-tunnels">Actualizar</md-outlined-button>
       </div>
       <div class="table-wrap">
         <table class="admin-table" id="tunnels-table">
@@ -116,7 +116,7 @@
           <input type="number" id="anon-limit" min="0" max="100" required>
         </div>
         <p id="settings-msg" class="form-error" hidden></p>
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <md-filled-button type="submit">Guardar</md-filled-button>
       </form>
     </section>
   </main>
@@ -145,8 +145,8 @@
       <label class="admin-check"><input type="checkbox" id="edit-user-admin"> Administrador</label>
       <p id="user-form-msg" class="form-error" hidden></p>
       <div class="dialog-actions">
-        <button type="button" class="btn btn-ghost" id="user-cancel">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <md-outlined-button type="button" id="user-cancel">Cancelar</md-outlined-button>
+        <md-filled-button type="submit">Guardar</md-filled-button>
       </div>
     </form>
   </dialog>
@@ -189,8 +189,8 @@
       <label class="admin-check"><input type="checkbox" id="edit-plan-active"> Plan activo</label>
       <p id="plan-form-msg" class="form-error" hidden></p>
       <div class="dialog-actions">
-        <button type="button" class="btn btn-ghost" id="plan-cancel">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <md-outlined-button type="button" id="plan-cancel">Cancelar</md-outlined-button>
+        <md-filled-button type="submit">Guardar</md-filled-button>
       </div>
     </form>
   </dialog>

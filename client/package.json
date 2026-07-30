@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Expón tu localhost como URL pública HTTPS en dtunnel.desarrollado.com",
   "type": "module",
   "bin": {
@@ -11,6 +11,7 @@
   },
   "files": [
     "bin/",
+    "CHANGELOG.md",
     "README.md"
   ],
   "keywords": [

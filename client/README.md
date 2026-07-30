@@ -2,7 +2,7 @@
 
 CLI para exponer un servidor local como URL pública `https://*.dtunnel.desarrollado.com`.
 
-**Versión actual:** `1.0.2`
+**Versión actual:** `1.0.3`
 
 - **npm:** [@desarrollado/dtunnel](https://www.npmjs.com/package/@desarrollado/dtunnel)
 - **Código:** [github.com/desarrollado-com/dtunnel](https://github.com/desarrollado-com/dtunnel)
@@ -23,7 +23,7 @@ npm install -g @desarrollado/dtunnel
 dtunnel version
 ```
 
-Requiere Node.js 16+. Instala también [frpc](https://github.com/fatedier/frp/releases) por separado.
+Requiere Node.js 16+. `frpc` se descarga automáticamente al primer túnel (o con `dtunnel install-frpc`) en `~/.dtunnel/bin/`.
 
 ## Actualizar
 
@@ -44,4 +44,4 @@ dtunnel --list up
 dtunnel down
 ```
 
-Ver [documentación](https://dtunnel.desarrollado.com/docs.html).
+Ver [documentación](https://dtunnel.desarrollado.com/docs.html) · [changelog](https://dtunnel.desarrollado.com/changelog.html).

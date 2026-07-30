@@ -2,7 +2,8 @@
 /**
  * dtunnel CLI — expone localhost como URL pública
  */
-import { spawn, execSync } from 'child_process';
+import { ensureFrpcBinary, findFrpcBinary } from './frpc-install.js';
+import { spawn } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
@@ -87,6 +88,7 @@ function parseArgs(argv) {
     else if (a === 'version' || a === '-v' || a === '--version') args.cmd = 'version';
     else if (a === 'list') { args.cmd = 'list'; args.listWhat = argv[++i] || 'up'; }
     else if (a === 'reserve') { args.cmd = 'reserve'; args.subdomain = argv[++i]; }
+    else if (a === 'install-frpc') args.cmd = 'install-frpc';
     else if (a === '--help' || a === '-h' || a === 'help') args.cmd = 'help';
     else if (!a.startsWith('-') && !args.port) args.port = Number(a);
   }
@@ -106,6 +108,7 @@ dtunnel — URL pública para tu servidor local
   dtunnel register                     Crear cuenta
   dtunnel reserve <nombre>             Reservar subdominio (requiere login)
   dtunnel down                         Detener túnel
+  dtunnel install-frpc                 Descargar frpc a ~/.dtunnel/bin
 
 Variables:
   DTUNNEL_API_URL   ${DEFAULT_API}
@@ -113,14 +116,12 @@ Variables:
 }
 
 function findFrpc() {
-  try {
-    const p = execSync(process.platform === 'win32' ? 'where frpc' : 'which frpc', {
-      encoding: 'utf8',
-    }).trim().split('\n')[0];
-    return p;
-  } catch {
-    return null;
-  }
+  return findFrpcBinary();
+}
+
+async function cmdInstallFrpc() {
+  const path = await ensureFrpcBinary();
+  console.log(`frpc listo: ${path}`);
 }
 
 async function apiFetch(path, options = {}) {
@@ -209,9 +210,9 @@ async function cmdUp(args) {
     body: JSON.stringify(body),
   });
 
-  const frpc = findFrpc();
+  const frpc = await ensureFrpcBinary();
   if (!frpc) {
-    console.error('Instala frpc: https://github.com/fatedier/frp/releases');
+    console.error('No se pudo instalar frpc. Ejecuta: dtunnel install-frpc');
     process.exit(1);
   }
 
@@ -339,6 +340,7 @@ switch (args.cmd) {
   case 'down': cmdDown(); break;
   case 'status': cmdStatus(); break;
   case 'version': cmdVersion(); break;
+  case 'install-frpc': await cmdInstallFrpc(); break;
   case 'list': await cmdList(args.listWhat); break;
   case 'up': await cmdUp(args); break;
   default: usage(); process.exit(1);

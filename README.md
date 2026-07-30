@@ -2,7 +2,7 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Versión actual del CLI:** `1.0.2`
+**Versión actual del CLI:** `1.0.3`
 
 ```
 localhost:88080  →  frpc  →  frps (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
@@ -22,7 +22,7 @@ dtunnel version
 
 ### Node.js (desarrolladores / Windows sin WSL)
 
-Requiere Node.js 16+ y [frpc](https://github.com/fatedier/frp/releases) en PATH.
+Requiere Node.js 16+. `frpc` se descarga solo al primer túnel (o con `dtunnel install-frpc`) en `~/.dtunnel/bin/`.
 
 ```bash
 npm install -g @desarrollado/dtunnel
@@ -92,5 +92,6 @@ python deploy/upload-install.py
 ## Documentación
 
 - [Plan de producto](docs/product-plan.md)
+- [Changelog](CHANGELOG.md) · [web](https://dtunnel.desarrollado.com/changelog.html)
 - [Hestia / infra](docs/hestia.md)
 - [Arquitectura](docs/architecture.md)

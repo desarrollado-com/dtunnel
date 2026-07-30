@@ -10,9 +10,9 @@ Self-hosted HTTP tunnel (Tunnelmole / ngrok style):
 
 - **server/**: `frps` en VPS (Docker)
 - **api/**: Node.js — auth, túneles, subdominios reservados
-- **client/**: CLI npm `@desarrollado/dtunnel`
+- **client/**: CLI npm `@desarrollado/dtunnel` (auto-instala `frpc` en `~/.dtunnel/bin/`)
 - **install/dtunnel/**: instalador curl (frpc + CLI bash)
-- **web/**: landing → `public_html` en Hestia
+- **web/**: landing, docs, changelog, admin → `public_html` en Hestia
 - **deploy/**: scripts Python de despliegue (`deploy.py`, `upload-web.py`, `upload-install.py`)
 
 ## Comandos
@@ -47,4 +47,6 @@ dtunnel --port 88080
 | `client/bin/dtunnel.js` | CLI Node |
 | `client/dtunnel.sh` | CLI bash (instalador curl) |
 | `install/dtunnel/install` | Script instalador universal |
-| `web/admin.html` | Panel superadmin |
+| `client/bin/frpc-install.js` | Descarga automática de frpc |
+| `web/changelog.html` | Historial de versiones (web) |
+| `CHANGELOG.md` | Changelog del proyecto |
