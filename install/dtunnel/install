@@ -9,7 +9,7 @@
 #
 set -euo pipefail
 
-DTUNNEL_VERSION="${DTUNNEL_VERSION:-1.0.0}"
+DTUNNEL_VERSION="${DTUNNEL_VERSION:-1.0.1}"
 FRP_VERSION="${FRP_VERSION:-0.61.1}"
 INSTALL_BASE="${DTUNNEL_INSTALL_URL:-https://install.desarrollado.com/dtunnel}"
 # Espejo si install.desarrollado.com aún no resuelve:

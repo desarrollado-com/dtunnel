@@ -3,6 +3,7 @@
 ## Hecho (checklist)
 
 - [x] Dominio web: `dtunnel.desarrollado.com`
+- [x] Dominio instalador: `install.desarrollado.com`
 - [x] Alias: `*.dtunnel.desarrollado.com` (FQDN completo — forma correcta en Hestia)
 - [x] DNS zona con registro `*` → IP del VPS
 - [x] SSL: **Utilizar Let's Encrypt para obtener un certificado SSL** (Hestia gestiona DNS-01 para el comodín)

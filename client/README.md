@@ -2,6 +2,9 @@
 
 CLI para exponer un servidor local como URL pública `https://*.dtunnel.desarrollado.com`.
 
+- **npm:** [@desarrollado/dtunnel](https://www.npmjs.com/package/@desarrollado/dtunnel)
+- **Código:** [github.com/desarrollado-com/dtunnel](https://github.com/desarrollado-com/dtunnel)
+
 ## Instalación
 
 ### Linux / macOS / WSL (recomendado)
@@ -9,13 +12,13 @@ CLI para exponer un servidor local como URL pública `https://*.dtunnel.desarrol
 Instala `frpc` y el CLI automáticamente:
 
 ```bash
-curl -fsSL https://install.desarrollado.com/dtunnel/install | sudo bash
+curl -O https://install.desarrollado.com/dtunnel/install && sudo bash install
 ```
 
 Auditar el script antes de ejecutar:
 
 ```bash
-curl -fsSL https://install.desarrollado.com/dtunnel/install
+curl https://install.desarrollado.com/dtunnel/install
 ```
 
 ### Node.js (desarrolladores / Windows sin WSL)

@@ -12,7 +12,17 @@ Servicio self-hosted tipo [Tunnelmole](https://github.com/robbie-cahill/tunnelmo
 | `*.dtunnel.desarrollado.com` | Túneles activos                      |
 
 
-**Ruta web Hestia:** `/home/desarrollado/web/dtunnel.desarrollado.com/public_html`
+**Ruta web Hestia:** `/home/desarrollado/web/dtunnel.desarrollado.com/public_html`  
+**Instalador curl:** `/home/desarrollado/web/install.desarrollado.com/public_html/dtunnel/`
+
+## Enlaces
+
+| Recurso | URL |
+|---------|-----|
+| Sitio | https://dtunnel.desarrollado.com |
+| Instalador | https://install.desarrollado.com/dtunnel/install |
+| npm | https://www.npmjs.com/package/@desarrollado/dtunnel |
+| GitHub | https://github.com/desarrollado-com/dtunnel |
 
 ## Arquitectura
 

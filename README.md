@@ -6,7 +6,8 @@ Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarroll
 localhost:88080  →  frpc  →  frps (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
 ```
 
-Repositorio: [github.com/desarrollado-com/dtunnel](https://github.com/desarrollado-com/dtunnel)
+Repositorio: [github.com/desarrollado-com/dtunnel](https://github.com/desarrollado-com/dtunnel)  
+Paquete npm: [@desarrollado/dtunnel](https://www.npmjs.com/package/@desarrollado/dtunnel) (v1.0.1)
 
 ## Instalación (usuarios)
 
@@ -68,6 +69,7 @@ python deploy/upload-install.py
 | `dtunnel.desarrollado.com` | Landing, login, API |
 | `install.desarrollado.com` | Instalador curl |
 | `*.dtunnel.desarrollado.com` | Túneles activos |
+| [npmjs.com/@desarrollado/dtunnel](https://www.npmjs.com/package/@desarrollado/dtunnel) | CLI Node.js |
 
 ## Documentación
 

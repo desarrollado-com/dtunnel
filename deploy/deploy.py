@@ -189,7 +189,7 @@ def main() -> int:
     print("Despliegue completado.")
     print(f"  Landing: https://{domain}")
     print(f"  API:     https://{domain}/api/health")
-    print("  CLI:     cd client && npm link && dtunnel --port 88080")
+    print("  CLI:     npm install -g @desarrollado/dtunnel && dtunnel --port 88080")
     return 0
 
 

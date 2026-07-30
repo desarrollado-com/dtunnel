@@ -26,6 +26,7 @@ python deploy/upload-install.py
 
 # Cliente local (desarrollo)
 cd client && npm link
+# o: npm install -g @desarrollado/dtunnel
 dtunnel --port 88080
 ```
 

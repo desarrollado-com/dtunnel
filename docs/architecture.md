@@ -30,6 +30,15 @@
 | frps vhost | 18080 | No (localhost) |
 | frps control | 7000 | Sí (clientes) |
 
+## Distribución del CLI
+
+| Canal | URL |
+|-------|-----|
+| Instalador curl | `https://install.desarrollado.com/dtunnel/install` |
+| Espejo curl | `https://dtunnel.desarrollado.com/install/dtunnel/install` |
+| npm | `@desarrollado/dtunnel` en [npmjs.com](https://www.npmjs.com/package/@desarrollado/dtunnel) |
+| Código fuente | [github.com/desarrollado-com/dtunnel](https://github.com/desarrollado-com/dtunnel) |
+
 ## Usuarios
 
 - **Anónimo:** URL aleatoria, 1 túnel.
