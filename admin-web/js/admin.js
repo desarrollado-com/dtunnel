@@ -72,6 +72,7 @@ async function loadUsers() {
         <button type="button" class="btn btn-ghost btn-sm" data-edit-user="${user.id}">Editar</button>
         ${user.activeTunnelCount > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-close-user-tunnels="${user.id}">Cerrar túneles</button>` : ''}
         ${user.active ? `<button type="button" class="btn btn-ghost btn-sm" data-suspend-user="${user.id}">Suspender</button>` : ''}
+        <button type="button" class="btn btn-ghost btn-sm btn-danger" data-delete-user="${user.id}">Eliminar</button>
       </td>
     </tr>
   `).join('');
@@ -122,6 +123,45 @@ async function loadSettings() {
   const data = await api('/settings');
   if (!data) return;
   document.getElementById('anon-limit').value = data.anonTunnelLimit;
+  document.getElementById('heartbeat-timeout').value = data.heartbeatTimeoutMin;
+  document.getElementById('stale-hours').value = data.staleTunnelHours;
+}
+
+async function loadSubdomains() {
+  const data = await api('/subdomains');
+  if (!data) return;
+  const tbody = document.querySelector('#subdomains-table tbody');
+  tbody.innerHTML = data.subdomains.length ? data.subdomains.map((sub) => `
+    <tr>
+      <td><a href="https://${sub.name}.${TUNNEL_DOMAIN}" target="_blank" rel="noopener"><code>${sub.name}</code></a></td>
+      <td>${sub.email}</td>
+      <td>${sub.tunnelActive ? badge('activo', 'ok') : badge('inactivo', 'warn')}</td>
+      <td>${fmtDate(sub.createdAt)}</td>
+      <td><button type="button" class="btn btn-ghost btn-sm" data-release-subdomain="${sub.id}" data-sub-name="${sub.name}">Liberar</button></td>
+    </tr>
+  `).join('') : '<tr><td colspan="5" class="empty-cell">No hay subdominios reservados</td></tr>';
+}
+
+async function loadLogs() {
+  const q = document.getElementById('logs-search').value.trim();
+  const action = document.getElementById('logs-action-filter').value;
+  const params = new URLSearchParams({ limit: '150' });
+  if (q) params.set('q', q);
+  if (action) params.set('action', action);
+  const data = await api(`/logs?${params}`);
+  if (!data) return;
+  document.getElementById('logs-meta').textContent = `${data.total} evento(s) — mostrando ${data.logs.length}`;
+  const tbody = document.querySelector('#logs-table tbody');
+  tbody.innerHTML = data.logs.length ? data.logs.map((log) => `
+    <tr>
+      <td>${fmtDate(log.createdAt)}</td>
+      <td><code>${log.action}</code></td>
+      <td>${log.actorEmail || '<em>sistema</em>'}</td>
+      <td>${log.targetType ? `${log.targetType}:${log.targetId || '—'}` : '—'}</td>
+      <td>${log.ip || '—'}</td>
+      <td class="log-details">${log.details ? JSON.stringify(log.details) : '—'}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty-cell">Sin registros</td></tr>';
 }
 
 function showUserEditor(userId) {
@@ -165,6 +205,12 @@ document.getElementById('admin-tabs').addEventListener('click', (e) => {
 
 document.getElementById('refresh-users').addEventListener('click', loadUsers);
 document.getElementById('refresh-tunnels').addEventListener('click', loadTunnels);
+document.getElementById('refresh-subdomains').addEventListener('click', loadSubdomains);
+document.getElementById('refresh-logs').addEventListener('click', loadLogs);
+document.getElementById('logs-search').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loadLogs();
+});
+document.getElementById('logs-action-filter').addEventListener('change', loadLogs);
 document.getElementById('new-plan-btn').addEventListener('click', () => showPlanEditor());
 
 document.getElementById('users-table').addEventListener('click', (e) => {
@@ -174,6 +220,8 @@ document.getElementById('users-table').addEventListener('click', (e) => {
   if (suspendId) suspendUser(suspendId);
   const closeId = Number(e.target.dataset.closeUserTunnels);
   if (closeId) closeUserTunnels(closeId);
+  const deleteId = Number(e.target.dataset.deleteUser);
+  if (deleteId) deleteUser(deleteId);
 });
 
 async function suspendUser(userId) {
@@ -183,6 +231,7 @@ async function suspendUser(userId) {
   loadUsers();
   loadOverview();
   loadTunnels();
+  loadLogs();
 }
 
 async function closeUserTunnels(userId) {
@@ -193,6 +242,17 @@ async function closeUserTunnels(userId) {
   loadUsers();
   loadOverview();
   loadTunnels();
+  loadLogs();
+}
+
+async function deleteUser(userId) {
+  if (!confirm('¿Eliminar este usuario de forma permanente? Se liberarán sus subdominios y túneles.')) return;
+  const data = await api(`/users/${userId}`, { method: 'DELETE' });
+  if (!data) return;
+  loadUsers();
+  loadOverview();
+  loadSubdomains();
+  loadLogs();
 }
 
 document.getElementById('plans-table').addEventListener('click', (e) => {
@@ -209,6 +269,18 @@ document.getElementById('tunnels-table').addEventListener('click', async (e) => 
   await api(`/tunnels/${id}`, { method: 'DELETE' });
   loadTunnels();
   loadOverview();
+  loadLogs();
+});
+
+document.getElementById('subdomains-table').addEventListener('click', async (e) => {
+  const id = Number(e.target.dataset.releaseSubdomain);
+  const name = e.target.dataset.subName;
+  if (!id) return;
+  if (!confirm(`¿Liberar el subdominio "${name}"?`)) return;
+  await api(`/subdomains/${id}`, { method: 'DELETE' });
+  loadSubdomains();
+  loadOverview();
+  loadLogs();
 });
 
 document.getElementById('user-cancel').addEventListener('click', () => document.getElementById('user-dialog').close());
@@ -234,6 +306,7 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
     document.getElementById('user-dialog').close();
     loadUsers();
     loadOverview();
+    loadLogs();
   } catch (err) {
     msg.textContent = err.message;
     msg.hidden = false;
@@ -280,17 +353,42 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
   try {
     await api('/settings', {
       method: 'PATCH',
-      body: JSON.stringify({ anonTunnelLimit: Number(document.getElementById('anon-limit').value) }),
+      body: JSON.stringify({
+        anonTunnelLimit: Number(document.getElementById('anon-limit').value),
+        heartbeatTimeoutMin: Number(document.getElementById('heartbeat-timeout').value),
+        staleTunnelHours: Number(document.getElementById('stale-hours').value),
+      }),
     });
     msg.textContent = 'Ajustes guardados';
     msg.className = 'form-success';
     msg.hidden = false;
     loadOverview();
+    loadLogs();
   } catch (err) {
     msg.textContent = err.message;
     msg.className = 'form-error';
     msg.hidden = false;
   }
+});
+
+document.getElementById('purge-stale-btn').addEventListener('click', async () => {
+  if (!confirm('¿Purgar túneles obsoletos según los umbrales configurados?')) return;
+  const msg = document.getElementById('maintenance-msg');
+  const data = await api('/maintenance/purge-stale', { method: 'POST' });
+  if (!data) return;
+  msg.textContent = `Eliminados ${data.removed} túnel(es) obsoletos.`;
+  loadTunnels();
+  loadOverview();
+  loadLogs();
+});
+
+document.getElementById('purge-logs-btn').addEventListener('click', async () => {
+  if (!confirm('¿Eliminar logs de más de 30 días?')) return;
+  const msg = document.getElementById('maintenance-msg');
+  const data = await api('/maintenance/purge-logs', { method: 'POST', body: JSON.stringify({ days: 30 }) });
+  if (!data) return;
+  msg.textContent = `Eliminados ${data.removed} registro(s).`;
+  loadLogs();
 });
 
 document.getElementById('logout').addEventListener('click', (e) => {
@@ -304,7 +402,7 @@ async function init() {
   const me = await api('/me');
   if (!me) return;
   document.getElementById('admin-email').textContent = me.email;
-  await Promise.all([loadOverview(), loadUsers(), loadPlans(), loadTunnels(), loadSettings()]);
+  await Promise.all([loadOverview(), loadUsers(), loadPlans(), loadTunnels(), loadSubdomains(), loadLogs(), loadSettings()]);
 }
 
 init();

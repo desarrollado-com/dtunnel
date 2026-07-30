@@ -34,7 +34,9 @@ import {
   findTunnelBySubdomain,
   cleanupStaleTunnels,
   getAdminStats,
+  getInactiveSubdomainStatus,
 } from './db.js';
+import { appendAuditLog } from './audit.js';
 import { createAdminRouter } from './routes/admin.js';
 import { getClientIp } from './middleware/clientIp.js';
 import { registerLimiter, loginLimiter, tunnelCreateLimiter, forgotPasswordLimiter } from './middleware/rateLimit.js';
@@ -54,7 +56,7 @@ const APP_URL = process.env.APP_URL || 'https://dtunnel.desarrollado.com';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const API_VERSION = process.env.API_VERSION || '2.0.0';
+const API_VERSION = process.env.API_VERSION || '2.1.0';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const FRPS_TOKEN = process.env.FRPS_TOKEN || '';
 const FRPS_SERVER = process.env.FRPS_SERVER || 'dtunnel.desarrollado.com';
@@ -388,6 +390,16 @@ app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
     if (!useNative) response.transport = 'frp';
   }
 
+  appendAuditLog({
+    actorUserId: userId,
+    actorEmail: dbUser?.email ?? null,
+    action: 'tunnel.open',
+    targetType: 'tunnel',
+    targetId: result.lastInsertRowid,
+    details: { subdomain, port, transport: response.transport },
+    ip: clientIp,
+  });
+
   res.status(201).json(response);
 });
 
@@ -434,6 +446,15 @@ app.delete('/tunnels/:subdomain', authOptional, (req, res) => {
       return res.status(404).json({ error: 'Túnel no encontrado' });
     }
     unregisterTunnel(subdomain);
+    appendAuditLog({
+      actorUserId: userId,
+      actorEmail: req.user?.email ?? null,
+      action: 'tunnel.close',
+      targetType: 'tunnel',
+      targetId: row?.id,
+      details: { subdomain },
+      ip: clientIp,
+    });
     res.json({ ok: true, subdomain });
   } catch (e) {
     if (e.code === 'FORBIDDEN') {
@@ -454,6 +475,8 @@ if (useNative) {
     httpPort: TUNNEL_HTTP_PORT,
     apiServer: server,
     findTunnelBySubdomain,
+    getInactiveSubdomainStatus,
+    mainSite: APP_URL,
   });
 }
 

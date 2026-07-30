@@ -33,6 +33,8 @@
       <button type="button" class="admin-tab" data-tab="users">Usuarios</button>
       <button type="button" class="admin-tab" data-tab="plans">Planes</button>
       <button type="button" class="admin-tab" data-tab="tunnels">Túneles activos</button>
+      <button type="button" class="admin-tab" data-tab="subdomains">Subdominios</button>
+      <button type="button" class="admin-tab" data-tab="logs">Logs</button>
       <button type="button" class="admin-tab" data-tab="settings">Ajustes</button>
     </nav>
 
@@ -110,6 +112,64 @@
       </div>
     </section>
 
+    <section class="admin-panel" id="panel-subdomains">
+      <div class="admin-toolbar">
+        <h2>Subdominios reservados</h2>
+        <button type="button" class="btn btn-ghost btn-sm" id="refresh-subdomains">Actualizar</button>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table" id="subdomains-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Propietario</th>
+              <th>Túnel activo</th>
+              <th>Reservado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-panel" id="panel-logs">
+      <div class="admin-toolbar">
+        <h2>Registro de actividad</h2>
+        <div class="admin-toolbar-actions">
+          <input type="search" id="logs-search" class="admin-search" placeholder="Buscar email, acción…">
+          <select id="logs-action-filter" class="admin-select">
+            <option value="">Todas las acciones</option>
+            <option value="tunnel.open">tunnel.open</option>
+            <option value="tunnel.close">tunnel.close</option>
+            <option value="user.suspend">user.suspend</option>
+            <option value="user.update">user.update</option>
+            <option value="user.delete">user.delete</option>
+            <option value="settings.update">settings.update</option>
+            <option value="subdomain.release">subdomain.release</option>
+            <option value="maintenance.purge_stale">maintenance.purge_stale</option>
+          </select>
+          <button type="button" class="btn btn-ghost btn-sm" id="refresh-logs">Actualizar</button>
+        </div>
+      </div>
+      <p id="logs-meta" class="admin-subtitle"></p>
+      <div class="table-wrap">
+        <table class="admin-table admin-table-logs" id="logs-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Acción</th>
+              <th>Actor</th>
+              <th>Objetivo</th>
+              <th>IP</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="admin-panel" id="panel-settings">
       <h2>Ajustes globales</h2>
       <form id="settings-form" class="admin-form">
@@ -117,9 +177,23 @@
           <label for="anon-limit">Límite de túneles anónimos</label>
           <input type="number" id="anon-limit" min="0" max="100" required>
         </div>
+        <div class="form-group">
+          <label for="heartbeat-timeout">Timeout heartbeat (minutos)</label>
+          <input type="number" id="heartbeat-timeout" min="1" max="120" required>
+        </div>
+        <div class="form-group">
+          <label for="stale-hours">Purga túneles huérfanos (horas)</label>
+          <input type="number" id="stale-hours" min="1" max="168" required>
+        </div>
         <p id="settings-msg" class="form-error" hidden></p>
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="submit" class="btn btn-primary">Guardar ajustes</button>
       </form>
+      <h3 class="admin-section-title">Mantenimiento</h3>
+      <div class="admin-maintenance">
+        <button type="button" class="btn btn-outlined" id="purge-stale-btn">Purgar túneles obsoletos</button>
+        <button type="button" class="btn btn-outlined" id="purge-logs-btn">Purgar logs &gt; 30 días</button>
+      </div>
+      <p id="maintenance-msg" class="admin-subtitle"></p>
     </section>
   </main>
 

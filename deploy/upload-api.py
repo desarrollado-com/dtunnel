@@ -45,7 +45,7 @@ def build_api_env(cfg: dict[str, str], jwt_secret: str) -> str:
         f"ADMIN_EMAILS={admin_emails}",
         f"APP_URL={app_url}",
         f"CORS_ORIGINS={cors}",
-        "API_VERSION=2.0.0",
+        "API_VERSION=2.1.0",
         "TUNNEL_TRANSPORT=native",
         "TUNNEL_HTTP_PORT=18080",
     ]

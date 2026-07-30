@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { randomUUID } from 'crypto';
 import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
+import { renderInactiveTunnelPage, wantsHtmlPage } from './inactive-page.js';
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -128,7 +129,36 @@ export function startNativeTunnelServer({
   httpPort = 18080,
   apiServer,
   findTunnelBySubdomain,
+  getInactiveSubdomainStatus,
+  mainSite = `https://${domain}`,
 }) {
+  function sendInactivePage(req, res, subdomain) {
+    const info = getInactiveSubdomainStatus
+      ? getInactiveSubdomainStatus(subdomain)
+      : { status: 'available', subdomain };
+    if (wantsHtmlPage(req)) {
+      const html = renderInactiveTunnelPage({
+        subdomain,
+        domain,
+        status: info.status,
+        mainSite,
+      });
+      res.statusCode = 503;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(html);
+      return;
+    }
+    res.statusCode = 503;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({
+      error: 'tunnel_inactive',
+      status: info.status,
+      subdomain,
+      message: 'Túnel no activo',
+    }));
+  }
+
   const httpServer = createServer(async (req, res) => {
     const host = req.headers['x-forwarded-host'] || req.headers.host;
     const subdomain = extractSubdomain(host, domain);
@@ -138,14 +168,13 @@ export function startNativeTunnelServer({
       return;
     }
     const entry = tunnels.get(subdomain);
-    if (!entry || entry.ws.readyState !== entry.ws.OPEN) {
-      res.statusCode = 502;
-      res.end('Tunnel offline');
+    const wsLive = entry && entry.ws.readyState === entry.ws.OPEN;
+    if (!wsLive) {
+      sendInactivePage(req, res, subdomain);
       return;
     }
     if (findTunnelBySubdomain && !findTunnelBySubdomain(subdomain)) {
-      res.statusCode = 404;
-      res.end('Tunnel not registered');
+      sendInactivePage(req, res, subdomain);
       return;
     }
     proxyHttpToTunnel(req, res, subdomain, entry);

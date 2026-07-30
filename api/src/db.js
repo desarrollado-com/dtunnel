@@ -73,6 +73,21 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_user_id INTEGER,
+    actor_email TEXT,
+    action TEXT NOT NULL,
+    target_type TEXT,
+    target_id TEXT,
+    details TEXT,
+    ip TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
 `);
 
 function migrateColumn(table, column, definition) {
@@ -528,6 +543,63 @@ export function publicUser(user) {
     reservedSubdomainLimitOverride: user.reserved_subdomain_limit_override,
     createdAt: user.created_at,
   };
+}
+
+export function getInactiveSubdomainStatus(subdomain) {
+  const name = String(subdomain).toLowerCase();
+  const reserved = db.prepare(`
+    SELECT rs.id, rs.user_id, rs.name
+    FROM reserved_subdomains rs
+    WHERE rs.name = ?
+  `).get(name);
+  const tunnel = findTunnelBySubdomain(name);
+  if (tunnel) return { status: 'offline', subdomain: name };
+  if (reserved) return { status: 'reserved', subdomain: name };
+  return { status: 'available', subdomain: name };
+}
+
+export function listReservedSubdomains() {
+  return db.prepare(`
+    SELECT
+      rs.id, rs.name, rs.user_id, rs.created_at,
+      u.email,
+      (SELECT COUNT(*) FROM active_tunnels at WHERE at.subdomain = rs.name) AS tunnel_active
+    FROM reserved_subdomains rs
+    JOIN users u ON u.id = rs.user_id
+    ORDER BY rs.created_at DESC
+  `).all();
+}
+
+export function adminReleaseSubdomain(id) {
+  const row = db.prepare('SELECT id, name, user_id FROM reserved_subdomains WHERE id = ?').get(id);
+  if (!row) return null;
+  db.prepare('DELETE FROM reserved_subdomains WHERE id = ?').run(id);
+  return row;
+}
+
+export function deleteUser(id) {
+  const user = findUserById(id);
+  if (!user) return null;
+  releaseAllUserTunnels(id);
+  db.prepare('DELETE FROM reserved_subdomains WHERE user_id = ?').run(id);
+  db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  return user;
+}
+
+export function getAdminSettings() {
+  return {
+    anonTunnelLimit: getAnonTunnelLimit(),
+    heartbeatTimeoutMin: Number(getSetting('heartbeat_timeout_min') || process.env.HEARTBEAT_TIMEOUT_MIN || 10),
+    staleTunnelHours: Number(getSetting('stale_tunnel_hours') || process.env.STALE_TUNNEL_HOURS || 24),
+  };
+}
+
+export function updateAdminSettings(data) {
+  if (data.anonTunnelLimit != null) setSetting('anon_tunnel_limit', data.anonTunnelLimit);
+  if (data.heartbeatTimeoutMin != null) setSetting('heartbeat_timeout_min', data.heartbeatTimeoutMin);
+  if (data.staleTunnelHours != null) setSetting('stale_tunnel_hours', data.staleTunnelHours);
+  return getAdminSettings();
 }
 
 export default db;
