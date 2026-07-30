@@ -46,7 +46,7 @@ a:hover { text-decoration: underline; }
 
 .nav { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
 
-.nav a:not(.btn):not(md-filled-button):not(md-outlined-button) {
+.nav a:not(.btn) {
   color: var(--md-sys-color-on-surface-variant);
   font-size: 0.875rem;
   font-weight: 500;
@@ -63,45 +63,72 @@ a:hover { text-decoration: underline; }
 
 .nav-actions { display: flex; align-items: center; gap: 0.75rem; margin-left: 0.75rem; flex-shrink: 0; }
 
-/* Material Web — padding y legibilidad */
-md-filled-button,
-md-outlined-button,
-md-text-button {
+/* Botones M3 nativos (padding fiable en todos los navegadores) */
+.btn {
   display: inline-flex;
-  vertical-align: middle;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  min-height: 44px;
+  border-radius: 999px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  font-family: var(--font);
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
   flex-shrink: 0;
-  --md-filled-button-container-height: 44px;
-  --md-outlined-button-container-height: 44px;
-  --md-filled-button-label-text-size: 0.9375rem;
-  --md-outlined-button-label-text-size: 0.9375rem;
-  --md-filled-button-label-text-weight: 500;
-  --md-outlined-button-label-text-weight: 500;
-  --md-filled-button-leading-space: 20px;
-  --md-filled-button-trailing-space: 20px;
-  --md-outlined-button-leading-space: 20px;
-  --md-outlined-button-trailing-space: 20px;
-  --md-filled-button-container-shape: 999px;
-  --md-outlined-button-container-shape: 999px;
+  transition: filter 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
-.hero-actions md-filled-button,
-.hero-actions md-outlined-button,
-.nav-actions md-filled-button,
-.nav-actions md-outlined-button,
-.pricing .card md-filled-button {
-  --md-filled-button-container-height: 48px;
-  --md-outlined-button-container-height: 48px;
-  --md-filled-button-leading-space: 28px;
-  --md-filled-button-trailing-space: 28px;
-  --md-outlined-button-leading-space: 28px;
-  --md-outlined-button-trailing-space: 28px;
-  --md-filled-button-label-text-size: 1rem;
-  --md-outlined-button-label-text-size: 1rem;
+.btn-primary {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--md-sys-color-on-surface) 25%, transparent);
 }
 
-.btn, md-filled-button, md-outlined-button {
-  --md-filled-button-container-height: 44px;
-  --md-outlined-button-container-height: 44px;
+.btn-primary:hover {
+  filter: brightness(1.08);
+  text-decoration: none;
+  color: var(--md-sys-color-on-primary);
+}
+
+.btn-outlined,
+.btn-ghost {
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-outline);
+}
+
+.btn-outlined:hover,
+.btn-ghost:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
+  text-decoration: none;
+  color: var(--md-sys-color-primary);
+}
+
+.btn-lg {
+  padding: 0.875rem 2rem;
+  min-height: 52px;
+  font-size: 1rem;
+}
+
+.btn-block { width: 100%; }
+
+.btn-sm {
+  padding: 0.5rem 1.125rem;
+  min-height: 36px;
+  font-size: 0.8125rem;
+}
+
+/* Material Web — solo campos de texto */
+md-outlined-text-field {
+  width: 100%;
+  display: block;
 }
 
 .menu-toggle {
@@ -116,26 +143,7 @@ md-text-button {
 
 .menu-toggle:hover { background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.625rem 1.5rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-decoration: none;
-  border: 1px solid transparent;
-  cursor: pointer;
-}
-
-.btn-primary { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
-.btn-primary:hover { filter: brightness(1.08); text-decoration: none; color: var(--md-sys-color-on-primary); }
-.btn-ghost { border-color: var(--md-sys-color-outline); color: var(--md-sys-color-primary); background: transparent; }
-.btn-ghost:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); text-decoration: none; }
-.btn-lg { padding: 0.75rem 1.75rem; font-size: 1rem; }
-.btn-sm { padding: 0.35rem 0.85rem; font-size: 0.8rem; }
+.auth-form .btn { margin-top: 0.25rem; }
 
 .hero { padding: 4rem 1.5rem 3rem; max-width: 960px; margin: 0 auto; text-align: center; }
 .hero h1 { font-size: clamp(2.25rem, 5vw, 3.5rem); line-height: 1.12; margin-bottom: 1.25rem; font-weight: 400; }
@@ -317,13 +325,6 @@ md-outlined-text-field { width: 100%; }
 .admin-dialog { border: none; border-radius: var(--md-sys-shape-corner-extra-large); background: var(--md-sys-color-surface-container-high); padding: 1.5rem; width: min(520px, 92vw); }
 .admin-dialog::backdrop { background: rgba(0,0,0,.6); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
-.dialog-actions md-filled-button,
-.dialog-actions md-outlined-button {
-  --md-filled-button-leading-space: 24px;
-  --md-filled-button-trailing-space: 24px;
-  --md-outlined-button-leading-space: 24px;
-  --md-outlined-button-trailing-space: 24px;
-}
 
 .changelog-page { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
 .changelog-entry { margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--md-sys-color-outline-variant); }

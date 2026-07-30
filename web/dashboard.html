@@ -26,14 +26,14 @@
     <p id="email" class="text-muted" style="margin-bottom:0.5rem"></p>
     <p id="plan-info" class="text-muted" style="margin-bottom:2rem"></p>
     <p id="admin-link" hidden style="margin-bottom:2rem">
-      <md-outlined-button href="/admin.html">Panel de administración</md-outlined-button>
+      <a href="/admin.html" class="btn btn-outlined">Panel de administración</a>
     </p>
 
     <h2>Reservar subdominio</h2>
     <form id="reserve-form" class="auth-form" style="max-width:400px;margin-bottom:2rem">
       <md-outlined-text-field id="name" label="Nombre (ej. mi-api)" pattern="[a-z0-9-]{3,32}" required></md-outlined-text-field>
       <p id="reserve-msg" class="form-error" hidden></p>
-      <md-filled-button type="submit">Reservar</md-filled-button>
+      <button type="submit" class="btn btn-primary">Reservar</button>
     </form>
 
     <h2>Mis subdominios</h2>
