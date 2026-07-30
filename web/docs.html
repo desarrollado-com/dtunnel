@@ -42,7 +42,7 @@
         <a href="/changelog.html">Changelog</a>
         <a href="#inicio-rapido">Inicio rápido</a>
         <a href="#cli">Referencia CLI</a>
-        <a href="#cuentas">Cuentas y subdominios</a>
+        <a href="#cuentas">Subdominios y reservas</a>
         <a href="#casos-uso">Casos de uso</a>
         <a href="#api">API REST</a>
         <a href="#como-funciona">Cómo funciona</a>
@@ -194,11 +194,11 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
           <tbody>
             <tr>
               <td><code>dtunnel --port &lt;N&gt;</code></td>
-              <td>Túnel con subdominio aleatorio (gratis). Alias: <code>dtunnel &lt;N&gt;</code></td>
+              <td>Abre un <strong>túnel</strong> con subdominio aleatorio (sin cuenta). No abre reserva.</td>
             </tr>
             <tr>
               <td><code>dtunnel -p 3000 -s mi-api</code></td>
-              <td>Túnel con subdominio reservado (requiere cuenta y <code>reserve</code> previo)</td>
+              <td>Abre un <strong>túnel</strong> usando el nombre <code>mi-api</code> que ya reservaste antes</td>
             </tr>
             <tr>
               <td><code>dtunnel register</code></td>
@@ -210,7 +210,7 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
             </tr>
             <tr>
               <td><code>dtunnel reserve &lt;nombre&gt;</code></td>
-              <td>Reservar subdominio persistente (ej. <code>mi-api</code> → <code>mi-api.dtunnel.desarrollado.com</code>)</td>
+              <td>Guarda un nombre en tu cuenta (<strong>no abre túnel</strong>). Ej.: <code>mi-api</code> → <code>mi-api.dtunnel.desarrollado.com</code></td>
             </tr>
             <tr>
               <td><code>dtunnel status</code></td>
@@ -250,32 +250,144 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
 
       <!-- Cuentas -->
       <section id="cuentas" class="docs-section">
-        <h2>Cuentas y subdominios persistentes</h2>
+        <h2>Cuentas, subdominios y reservas</h2>
         <p>
-          Sin cuenta obtienes una <strong>URL aleatoria</strong> cada vez que ejecutas <code>dtunnel --port</code>.
-          Con cuenta puedes <strong>reservar un nombre</strong> y reutilizarlo en cada sesión.
+          En dtunnel conviven tres ideas distintas. Mezclarlas es la causa más habitual de errores
+          (<em>«subdominio no reservado»</em>, <em>«404 en la URL»</em>, etc.).
         </p>
 
-        <h3>Flujo con cuenta</h3>
-        <pre><code># 1. Crear cuenta (CLI o web en /register.html)
-dtunnel register
+        <h3>Tres conceptos (no son lo mismo)</h3>
+        <table class="docs-table">
+          <thead>
+            <tr><th>Concepto</th><th>Qué es</th><th>Ejemplo</th><th>¿Cuándo existe?</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Subdominio</strong></td>
+              <td>El <em>nombre</em> de tu URL pública</td>
+              <td><code>mi-api</code> en <code>https://mi-api.dtunnel.desarrollado.com</code></td>
+              <td>Siempre que hay túnel activo; o guardado en tu cuenta si lo reservaste</td>
+            </tr>
+            <tr>
+              <td><strong>Túnel</strong></td>
+              <td>La <em>conexión viva</em> entre tu PC y el servidor</td>
+              <td><code>dtunnel --port 3000</code> en ejecución</td>
+              <td>Solo mientras <code>frpc</code> está activo (<code>dtunnel down</code> lo cierra)</td>
+            </tr>
+            <tr>
+              <td><strong>Reserva</strong></td>
+              <td>Reclamar un nombre para tu cuenta</td>
+              <td><code>dtunnel reserve mi-api</code></td>
+              <td>Permanente mientras tu cuenta esté activa (aunque no haya túnel abierto)</td>
+            </tr>
+          </tbody>
+        </table>
 
-# 2. Reservar nombre (3–32 caracteres: a-z, 0-9, guión)
-dtunnel reserve mi-api
+        <div class="docs-callout">
+          <strong>Analogía rápida:</strong> el <em>subdominio</em> es la dirección, la <em>reserva</em> es registrar que esa dirección es tuya,
+          y el <em>túnel</em> es el camino abierto ahora mismo hacia tu <code>localhost</code>.
+          Reservar un nombre <strong>no</strong> hace que la URL responda sola: necesitas abrir el túnel después.
+        </div>
 
-# 3. Usar siempre el mismo subdominio
-dtunnel --port 3000 --subdomain mi-api
-# → https://mi-api.dtunnel.desarrollado.com</code></pre>
+        <h3>Sin cuenta (gratis)</h3>
+        <pre><code>dtunnel --port 80
+# → https://c349cc8e.dtunnel.desarrollado.com  (nombre aleatorio)</code></pre>
+        <ul class="docs-list">
+          <li>Cada vez que abres un túnel obtienes un subdominio <strong>aleatorio</strong>.</li>
+          <li>No puedes elegir el nombre ni reutilizarlo en otra sesión.</li>
+          <li>Al hacer <code>dtunnel down</code> el túnel se cierra; la URL deja de funcionar.</li>
+          <li>No existe el comando <code>reserve</code> sin cuenta.</li>
+        </ul>
 
-        <p>También puedes gestionar subdominios desde el panel web tras <a href="/login.html">iniciar sesión</a>.</p>
+        <h3>Con cuenta: dos pasos separados</h3>
+        <p>
+          Para tener siempre la misma URL necesitas <strong>reservar el nombre una vez</strong> y
+          <strong>abrir el túnel cuando quieras usarlo</strong>. Son acciones distintas.
+        </p>
+
+        <h4>Paso 1 — Reservar el nombre (una sola vez)</h4>
+        <pre><code>dtunnel register          # o dtunnel login
+dtunnel reserve mi-api    # guarda "mi-api" en tu cuenta — NO abre túnel</code></pre>
+        <p>
+          También puedes reservar desde el <a href="/dashboard.html">panel web</a> tras
+          <a href="/login.html">iniciar sesión</a>.
+          En este punto <code>https://mi-api.dtunnel.desarrollado.com</code> <strong>aún no responde</strong>:
+          solo has reclamado el nombre.
+        </p>
+
+        <h4>Paso 2 — Abrir el túnel con ese nombre</h4>
+        <pre><code>dtunnel --port 3000 --subdomain mi-api
+# → https://mi-api.dtunnel.desarrollado.com  ⟶  http://localhost:3000</code></pre>
+        <p>
+          Aquí sí se crea el túnel activo. Mientras el comando esté en marcha (o <code>frpc</code> siga corriendo),
+          la URL pública apunta a tu máquina. Al cerrar con <code>dtunnel down</code> la URL deja de responder,
+          pero <strong>la reserva de <code>mi-api</code> sigue en tu cuenta</strong> para la próxima vez.
+        </p>
+
+        <div class="docs-callout docs-callout-warn">
+          <strong>Error frecuente:</strong> ejecutar <code>dtunnel -s mi-api</code> sin haber hecho
+          <code>dtunnel reserve mi-api</code> antes. La API rechazará la petición porque el nombre no está en tu cuenta.
+        </div>
+
+        <h3>Reserva vs túnel activo</h3>
+        <table class="docs-table">
+          <thead>
+            <tr><th></th><th>Reserva (<code>reserve</code>)</th><th>Túnel activo (<code>--port</code>)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Qué guarda</td><td>El nombre en tu cuenta</td><td>La conexión en curso</td></tr>
+            <tr><td>¿Sirve HTTP por sí solo?</td><td>No</td><td>Sí (mientras esté abierto)</td></tr>
+            <tr><td>¿Sigue tras <code>dtunnel down</code>?</td><td>Sí</td><td>No</td></tr>
+            <tr><td>Comando típico</td><td><code>dtunnel reserve mi-api</code></td><td><code>dtunnel --port 3000 -s mi-api</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Dos límites distintos (con cuenta)</h3>
+        <p>No confundas cuántos <em>nombres</em> puedes guardar con cuántas <em>conexiones</em> puedes tener abiertas a la vez:</p>
+        <table class="docs-table">
+          <thead>
+            <tr><th>Límite</th><th>Qué cuenta</th><th>Gratis (anónimo)</th><th>Con cuenta (ej.)</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Túneles simultáneos</strong></td>
+              <td>Cuántas conexiones activas a la vez</td>
+              <td>1</td>
+              <td>5 (según plan)</td>
+            </tr>
+            <tr>
+              <td><strong>Subdominios reservados</strong></td>
+              <td>Cuántos nombres puedes reclamar con <code>reserve</code></td>
+              <td>0 (no aplica)</td>
+              <td>5 (según plan)</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="text-muted" style="font-size:0.9rem">
+          Puedes reservar varios nombres (<code>mi-api</code>, <code>staging</code>, <code>demo</code>…) y usar uno u otro
+          al abrir cada túnel con <code>-s</code>. Ver también <a href="#limites">Límites y planes</a>.
+        </p>
 
         <h3>Reglas de nombres</h3>
         <ul class="docs-list">
           <li>Longitud: 3–32 caracteres</li>
-          <li>Solo letras minúsculas, números y guiones</li>
-          <li>Reservados: <code>www</code>, <code>api</code>, <code>admin</code>, <code>mail</code>, etc.</li>
+          <li>Solo letras minúsculas, números y guiones (<code>a-z</code>, <code>0-9</code>, <code>-</code>)</li>
+          <li>Bloqueados para todos: <code>www</code>, <code>api</code>, <code>admin</code>, <code>mail</code>, <code>ftp</code>, <code>dtunnel</code></li>
           <li>Primero en reservar gana el nombre (mientras la cuenta esté activa)</li>
         </ul>
+
+        <h3>Flujo completo de referencia</h3>
+        <pre><code># Día 1 — configuración inicial
+dtunnel register
+dtunnel reserve mi-api
+
+# Cada vez que quieras exponer tu app
+dtunnel --port 3000 --subdomain mi-api
+# … trabajas con la misma URL …
+dtunnel down
+
+# Día 2 — la reserva sigue; solo abres de nuevo
+dtunnel --port 3000 --subdomain mi-api</code></pre>
       </section>
 
       <!-- Casos de uso -->
@@ -458,16 +570,20 @@ Authorization: Bearer &lt;token&gt;
       <!-- Límites -->
       <section id="limites" class="docs-section">
         <h2>Límites y planes</h2>
+        <p class="text-muted" style="margin-bottom:1rem;font-size:0.95rem">
+          «URL fija» significa que puedes <strong>reutilizar el mismo nombre</strong> cada vez que abres un túnel (tras <code>reserve</code>).
+          No significa que la URL esté siempre en línea: hace falta tener el túnel activo con <code>dtunnel --port</code>.
+        </p>
         <table class="docs-table">
           <thead>
             <tr><th></th><th>Gratis (anónimo)</th><th>Registrado</th></tr>
           </thead>
           <tbody>
-            <tr><td>URL</td><td>Aleatoria cada sesión</td><td>Subdominio reservado fijo</td></tr>
-            <tr><td>Túneles simultáneos</td><td>1</td><td>Hasta 5</td></tr>
-            <tr><td>Subdominio custom</td><td>No</td><td>Sí (tras <code>reserve</code>)</td></tr>
+            <tr><td>Subdominio</td><td>Aleatorio en cada túnel</td><td>Fijo si lo reservaste (<code>reserve</code>)</td></tr>
+            <tr><td>Túneles simultáneos</td><td>1</td><td>Hasta 5 (según plan)</td></tr>
+            <tr><td>Nombres reservables</td><td>0 — no puedes usar <code>reserve</code></td><td>Hasta 5 (según plan)</td></tr>
             <tr><td>HTTPS</td><td>Sí</td><td>Sí</td></tr>
-            <tr><td>Cuenta requerida</td><td>No</td><td>Sí (gratis)</td></tr>
+            <tr><td>Cuenta requerida</td><td>No</td><td>Sí (registro gratuito)</td></tr>
           </tbody>
         </table>
       </section>
@@ -524,8 +640,9 @@ Authorization: Bearer &lt;token&gt;
 
         <h3>404 en el subdominio</h3>
         <ul class="docs-list">
-          <li>El túnel no está activo o el subdominio no coincide con el de <code>dtunnel up</code>.</li>
-          <li>Con <code>--subdomain</code>, el nombre debe estar reservado en tu cuenta.</li>
+          <li>El <strong>túnel no está activo</strong> en tu máquina (<code>dtunnel status</code> debe mostrar conexión).</li>
+          <li>Reservar un nombre no basta: necesitas <code>dtunnel --port N -s nombre</code> con el túnel en marcha.</li>
+          <li>Con <code>--subdomain</code>, el nombre debe estar reservado en tu cuenta (<code>dtunnel reserve</code> o panel web).</li>
         </ul>
 
         <h3><code>Connection refused</code> al conectar frpc</h3>

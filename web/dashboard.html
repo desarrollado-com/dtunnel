@@ -29,20 +29,41 @@
       <a href="/admin.html" class="btn btn-outlined">Panel de administración</a>
     </p>
 
-    <h2>Reservar subdominio</h2>
+    <div class="docs-callout" style="margin-bottom:2rem;max-width:720px">
+      <p style="margin:0 0 0.75rem"><strong>Subdominio</strong> = el nombre de tu URL.
+      <strong>Reserva</strong> = guardar ese nombre en tu cuenta.
+      <strong>Túnel</strong> = la conexión activa hacia tu <code>localhost</code>.</p>
+      <p style="margin:0;font-size:0.9rem;color:var(--md-sys-color-on-surface-variant)">
+        Reservar aquí <em>no abre</em> el túnel. Después usa el CLI:
+        <code>dtunnel --port 3000 --subdomain &lt;nombre&gt;</code>.
+        <a href="/docs.html#cuentas">Más detalle en la documentación</a>.
+      </p>
+    </div>
+
+    <h2>Reservar un nombre</h2>
+    <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">
+      Reclama un subdominio para tu cuenta (ej. <code>mi-api</code> → <code>mi-api.dtunnel.desarrollado.com</code>).
+      La URL solo responderá cuando abras un túnel con ese nombre en el CLI.
+    </p>
     <form id="reserve-form" class="auth-form" style="max-width:400px;margin-bottom:2rem">
       <md-outlined-text-field id="name" label="Nombre (ej. mi-api)" pattern="[a-z0-9-]{3,32}" required></md-outlined-text-field>
       <p id="reserve-msg" class="form-error" hidden></p>
-      <button type="submit" class="btn btn-primary">Reservar</button>
+      <button type="submit" class="btn btn-primary">Reservar nombre</button>
     </form>
 
-    <h2>Mis subdominios</h2>
+    <h2>Mis nombres reservados</h2>
+    <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">
+      Estos nombres son tuyos mientras tu cuenta esté activa. Si el enlace da 404, abre un túnel con
+      <code>dtunnel --port &lt;puerto&gt; --subdomain &lt;nombre&gt;</code>.
+    </p>
     <ul id="subdomains" style="list-style:none"></ul>
 
-    <h2 style="margin-top:2rem">Usar en CLI</h2>
+    <h2 style="margin-top:2rem">Abrir un túnel (CLI)</h2>
+    <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">Paso 1 ya lo hiciste al reservar. Paso 2 es cuando quieras exponer tu app:</p>
     <pre><code>dtunnel login
-dtunnel reserve mi-api
-dtunnel --port 88080 --subdomain mi-api</code></pre>
+dtunnel reserve mi-api              # solo la primera vez
+dtunnel --port 88080 --subdomain mi-api   # cada vez que trabajes
+dtunnel down                        # al terminar (la reserva sigue)</code></pre>
   </main>
   <script>
     const token = localStorage.getItem('dtunnel_token');
@@ -56,12 +77,12 @@ dtunnel --port 88080 --subdomain mi-api</code></pre>
       const data = await res.json();
       document.getElementById('email').textContent = data.email;
       document.getElementById('plan-info').textContent =
-        `Plan: ${data.planName || data.plan} · Túneles: ${data.limits?.tunnelLimit ?? '—'} · Subdominios: ${data.limits?.reservedSubdomainLimit ?? '—'}`;
+        `Plan: ${data.planName || data.plan} · Túneles simultáneos: ${data.limits?.tunnelLimit ?? '—'} · Nombres reservables: ${data.limits?.reservedSubdomainLimit ?? '—'}`;
       if (data.isAdmin) document.getElementById('admin-link').hidden = false;
       const ul = document.getElementById('subdomains');
       ul.innerHTML = data.subdomains.length
-        ? data.subdomains.map(s => `<li><a href="https://${s}.dtunnel.desarrollado.com">${s}.dtunnel.desarrollado.com</a></li>`).join('')
-        : '<li class="text-muted">Ninguno reservado aún</li>';
+        ? data.subdomains.map(s => `<li style="margin-bottom:0.5rem"><a href="https://${s}.dtunnel.desarrollado.com">${s}.dtunnel.desarrollado.com</a> <span class="text-muted" style="font-size:0.85rem">— requiere túnel activo</span></li>`).join('')
+        : '<li class="text-muted">Ningún nombre reservado aún. Usa el formulario de arriba o <code>dtunnel reserve mi-api</code>.</li>';
     }
 
     document.getElementById('reserve-form').addEventListener('submit', async (e) => {
