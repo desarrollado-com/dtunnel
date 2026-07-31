@@ -194,15 +194,11 @@ dtunnel --port 3000</code></pre>
         <p>Si tu app usa <code>basePath: '/portal-pmo-frontend'</code>, abre la URL <strong>con ese prefijo</strong>:</p>
         <pre><code>https://TU-SUBDOMINIO.dtunnel.desarrollado.com/portal-pmo-frontend</code></pre>
         <p>La raíz <code>/</code> devolverá 404 — es normal si Next solo vive bajo el <code>basePath</code>.</p>
-        <p>En <strong>modo desarrollo</strong> (<code>next dev</code>), Next.js 15+ bloquea peticiones desde dominios
-          distintos de <code>localhost</code>. Añade en <code>next.config.js</code> o <code>next.config.ts</code>:</p>
-        <pre><code>const nextConfig = {
-  basePath: '/portal-pmo-frontend', // si ya lo usas
-  allowedDevOrigins: ['*.dtunnel.desarrollado.com'],
-};
-export default nextConfig;</code></pre>
-        <p>Reinicia <code>next dev</code> tras cambiar la config. El hot-reload (HMR) por WebSocket puede no funcionar
-          a través del túnel; la página sí debería cargar. Para demos estables usa <code>next build && next start</code>.</p>
+        <p>En <strong>modo desarrollo</strong> (<code>next dev</code>), dtunnel elimina automáticamente cabeceras
+          como <code>Origin</code> al reenviar a tu <code>localhost</code>, para que Next.js no bloquee los assets
+          (no hace falta <code>allowedDevOrigins</code> en la mayoría de casos).</p>
+        <p>Si usas <code>basePath</code>, abre la URL con ese prefijo. El hot-reload (HMR) por WebSocket puede no
+          funcionar; para demos usa <code>next build && next start</code>.</p>
         <p>En el otro PC:</p>
         <pre><code>dtunnel --port 3000
 dtunnel status   # debe mostrar el túnel activo

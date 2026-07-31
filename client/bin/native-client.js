@@ -11,6 +11,11 @@ const HOP_BY_HOP = new Set([
   'te', 'trailers', 'transfer-encoding', 'upgrade',
 ]);
 
+const LOCAL_STRIP_HEADERS = new Set([
+  'origin', 'referer',
+  'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest', 'sec-fetch-user',
+]);
+
 function send(ws, msg) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
 }
@@ -27,7 +32,9 @@ function filterHeaders(headers) {
 
 function buildLocalHeaders(incoming) {
   const headers = filterHeaders(incoming);
-  // Node fetch sets Host from the URL; keep forwarded metadata for apps behind a proxy (Next.js, etc.).
+  for (const key of Object.keys(headers)) {
+    if (LOCAL_STRIP_HEADERS.has(key.toLowerCase())) delete headers[key];
+  }
   if (!headers['x-forwarded-proto'] && !headers['X-Forwarded-Proto']) {
     headers['x-forwarded-proto'] = 'https';
   }

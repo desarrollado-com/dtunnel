@@ -2,6 +2,12 @@
 
 Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
 
+## [2.0.5] - 2026-07-30
+
+### Corregido
+
+- Next.js en `next dev` devolvía 403 en `/_next/static/*` vía túnel: se eliminan `Origin`/`Referer` al reenviar a localhost (gateway + CLI).
+
 ## [2.0.4] - 2026-07-30
 
 ### Mejorado

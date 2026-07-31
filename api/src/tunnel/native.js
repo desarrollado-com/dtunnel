@@ -10,6 +10,20 @@ import { renderInactiveTunnelPage, wantsHtmlPage } from './inactive-page.js';
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
+/** Headers that break local dev servers (Next.js allowedDevOrigins) when tunneled. */
+const LOCAL_STRIP_HEADERS = new Set([
+  'origin', 'referer',
+  'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest', 'sec-fetch-user',
+]);
+
+export function sanitizeHeadersForLocalBackend(headers) {
+  const out = { ...headers };
+  for (const key of Object.keys(out)) {
+    if (LOCAL_STRIP_HEADERS.has(key.toLowerCase())) delete out[key];
+  }
+  return out;
+}
+
 /** @type {Map<string, { ws: import('ws').WebSocket, port: number }>} */
 const tunnels = new Map();
 
@@ -71,6 +85,7 @@ function proxyHttpToTunnel(req, res, subdomain, entry) {
   if (!headers['x-forwarded-for']) {
     headers['x-forwarded-for'] = req.socket?.remoteAddress || '';
   }
+  const localHeaders = sanitizeHeadersForLocalBackend(headers);
 
   const timer = setTimeout(() => {
     pending.delete(id);
@@ -110,7 +125,7 @@ function proxyHttpToTunnel(req, res, subdomain, entry) {
       id,
       method: req.method || 'GET',
       path,
-      headers,
+      headers: localHeaders,
       body: body.length ? body.toString('base64') : undefined,
     });
   }).catch(() => {
