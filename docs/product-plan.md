@@ -94,7 +94,9 @@ Ver [docker-compose.example.md](docker-compose.example.md).
 | 5d | Túnel nativo v2 (sin frpc) | Hecho |
 | 5e | Verificación email + admin reenvío | Hecho |
 | 5f | CLI `--host` / Docker | Hecho |
-| 6 | Billing / pagos automáticos | Futuro |
+| 6 | Billing Wompi + cupones + checkout | En progreso |
+| 6b | Organizaciones (planes empresa) + RBAC | En progreso |
+| 6c | Dominios CNAME por plan | En progreso |
 
 ## Panel superadmin
 

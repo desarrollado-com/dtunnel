@@ -2,14 +2,13 @@
 
 Túnel HTTP/HTTPS propio (estilo Tunnelmole / ngrok) bajo **`*.dtunnel.desarrollado.com`**.
 
-**Plataforma (web + API):** `2.1.0` · **CLI npm:** `2.0.3`
+**Plataforma (web + API + admin):** `2.6.0` · **CLI npm:** `2.3.0`
 
 ```
 localhost:88080  →  CLI Node (WebSocket)  →  API gateway (VPS)  →  https://a7f3c2.dtunnel.desarrollado.com
 ```
 
-v2 usa **túnel nativo** (solo Node.js, sin `frpc`). Modo legacy: `dtunnel --frp --port …`
-
+Túnel **nativo** (solo Node.js + WebSocket en la API).
 Repositorio: [github.com/desarrollado-com/dtunnel](https://github.com/desarrollado-com/dtunnel)  
 Paquete npm: [@desarrollado/dtunnel](https://www.npmjs.com/package/@desarrollado/dtunnel)
 
@@ -30,8 +29,6 @@ Requiere Node.js 18+. v2 no descarga binarios externos; usa WebSocket nativo.
 npm install -g @desarrollado/dtunnel
 dtunnel version
 ```
-
-Modo legacy con `frpc`: `dtunnel --frp --port 88080` (o `dtunnel install-frpc`).
 
 ## Actualizar
 
@@ -63,9 +60,9 @@ dtunnel/
 ├── api/              # API Node (auth, túneles, subdominios, admin, SMTP)
 ├── admin-web/        # Panel superadmin → dtunnel-admin.desarrollado.com
 ├── client/           # CLI npm @desarrollado/dtunnel
-├── install/dtunnel/  # Instalador curl (frpc + CLI bash)
+├── install/dtunnel/  # Instalador curl (CLI npm)
 ├── web/              # Landing, docs, dashboard → public_html principal
-├── server/           # frps (Docker) + plantillas Hestia
+├── server/           # Plantillas Hestia + verificación VPS
 ├── deploy/           # Scripts de despliegue al VPS
 └── docs/             # Arquitectura, Hestia, plan de producto
 ```
@@ -75,7 +72,7 @@ dtunnel/
 Credenciales del VPS en `secretos/.env.dtunnel` (fuera de este repo, nunca commitear).
 
 ```bash
-# Despliegue completo (broker + API + web + plantillas Hestia)
+# Despliegue completo (API + web + plantillas Hestia)
 python deploy/deploy.py
 
 # Solo sitio público (landing, docs, dashboard, recuperación de contraseña)

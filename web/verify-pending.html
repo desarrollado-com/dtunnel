@@ -6,35 +6,50 @@
   <title>Verifica tu email — dtunnel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
   <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <header class="top-app-bar">
-    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel</a>
-  </header>
-  <main class="auth-page">
-    <h1>Verifica tu email</h1>
-    <p class="text-muted" id="intro">
-      Te enviamos un enlace de activación. Revisa tu bandeja de entrada y spam.
-    </p>
-    <p id="email-display" class="text-muted" style="font-size:0.95rem;margin-bottom:1rem"></p>
-    <form id="resend-form" class="auth-form">
-      <md-outlined-text-field id="email" type="email" label="Email" required></md-outlined-text-field>
-      <p id="msg" class="form-error" hidden></p>
-      <p id="ok" class="form-success" hidden></p>
-      <button type="submit" class="btn btn-primary btn-block">Reenviar correo de activación</button>
-    </form>
-    <p class="text-muted" style="margin-top:1rem;font-size:0.9rem">
-      ¿Ya activaste? <a href="/login.html">Iniciar sesión</a>
-    </p>
-  </main>
-  <footer class="footer" data-site-footer></footer>
-  <script src="/js/site-footer.js"></script>
-  <script type="importmap">{"imports":{"@material/web/":"https://esm.run/@material/web/"}}</script>
-  <script type="module" src="/js/m3.js"></script>
+<body class="ws-auth-body">
+  <div class="ws-auth-shell">
+    <div class="ws-auth-brand">
+      <a href="/" class="ws-sidebar-brand">
+        <span class="material-symbols-outlined filled">hub</span>
+        <div>
+          <strong>dtunnel</strong>
+          <small>Mi cuenta</small>
+        </div>
+      </a>
+      <p class="ws-auth-tagline" id="intro">
+        Te enviamos un enlace de activación. Revisa tu bandeja de entrada y la carpeta de spam.
+      </p>
+      <p id="email-display" class="text-muted" style="font-size:0.9rem;margin-top:0.75rem"></p>
+    </div>
+
+    <main class="ws-auth-panel">
+      <div class="ws-card ws-auth-card">
+        <h1>Verifica tu email</h1>
+        <form id="resend-form" class="auth-form">
+          <label class="form-group">
+            <span>Email</span>
+            <input type="email" id="email" required class="admin-search" style="width:100%">
+          </label>
+          <p id="msg" class="form-error" hidden></p>
+          <p id="ok" class="form-success" hidden></p>
+          <button type="submit" class="btn btn-primary btn-block">Reenviar correo de activación</button>
+        </form>
+        <p class="auth-links">
+          ¿Ya activaste? <a href="/login.html">Iniciar sesión</a>
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <button type="button" class="theme-fab" id="theme-toggle" aria-label="Cambiar tema">
+    <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+  </button>
+
   <script>
     const params = new URLSearchParams(window.location.search);
     const stored = sessionStorage.getItem('dtunnel_pending_email');

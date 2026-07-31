@@ -15,8 +15,15 @@ import paramiko
 SCRIPT_DIR = Path(__file__).resolve().parent
 DTUNNEL_ROOT = SCRIPT_DIR.parent
 SECRETS_FILE = DTUNNEL_ROOT.parent.parent / "secretos" / ".env.dtunnel"
+VERSION_FILE = DTUNNEL_ROOT / "VERSION"
 REMOTE_OPT = "/opt/dtunnel"
 DOMAIN = "dtunnel.desarrollado.com"
+
+
+def read_platform_version() -> str:
+    if VERSION_FILE.is_file():
+        return VERSION_FILE.read_text(encoding="utf-8").strip()
+    return "2.2.0"
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -100,7 +107,7 @@ def main() -> int:
     cfg = load_env(SECRETS_FILE)
     required = [
         "SERVER_IP", "ROOT_USER", "ROOT_PASSWORD",
-        "DTUNNEL_USER", "DTUNNEL_PASSWORD", "DTUNNEL_TOKEN",
+        "DTUNNEL_USER", "DTUNNEL_PASSWORD",
         "DTUNNEL_PATH_PUBLIC",
     ]
     for key in required:
@@ -112,21 +119,15 @@ def main() -> int:
     root_user = cfg.get("ROOT_USER", "root")
     tunnel_user = cfg["DTUNNEL_USER"]
     public_path = cfg["DTUNNEL_PATH_PUBLIC"]
-    port = cfg.get("DTUNNEL_PORT", "18080")
-    token = cfg["DTUNNEL_TOKEN"]
     jwt_secret = cfg.get("JWT_SECRET") or secrets.token_hex(32)
     domain = cfg.get("DTUNNEL_DOMAIN", DOMAIN)
-
-    server_env = f"FRPS_TOKEN={token}\nFRPS_VHOST_PORT={port}\nFRPS_BIND_PORT=7000\n"
+    port = cfg.get("DTUNNEL_PORT", "18080")
     admin_emails = cfg.get("ADMIN_EMAILS", "")
     app_url = f"https://{domain}"
     cors = f"https://{domain},https://dtunnel-admin.desarrollado.com"
     api_env_lines = [
         "PORT=3001",
         f"JWT_SECRET={jwt_secret}",
-        f"FRPS_TOKEN={token}",
-        f"FRPS_SERVER={domain}",
-        "FRPS_PORT=7000",
         f"DOMAIN={domain}",
         "ANON_TUNNEL_LIMIT=1",
         "HEARTBEAT_TIMEOUT_MIN=10",
@@ -135,8 +136,7 @@ def main() -> int:
         f"ADMIN_EMAILS={admin_emails}",
         f"APP_URL={app_url}",
         f"CORS_ORIGINS={cors}",
-        "API_VERSION=2.0.0",
-        "TUNNEL_TRANSPORT=native",
+        f"API_VERSION={read_platform_version()}",
         f"TUNNEL_HTTP_PORT={port}",
     ]
     for key in ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_NAME"):
@@ -149,8 +149,6 @@ def main() -> int:
         api_env_lines.append(f"SMTP_FROM={cfg['SMTP_FROM']}")
     api_env = "\n".join(api_env_lines) + "\n"
 
-    (DTUNNEL_ROOT / "server" / ".env").write_text(server_env, encoding="utf-8")
-
     print("==> Conectando como root")
     root = ssh_connect(host, root_user, cfg["ROOT_PASSWORD"])
 
@@ -161,34 +159,28 @@ def main() -> int:
         timeout=900,
     )
 
-    print("==> Subiendo server/ y api/")
+    print("==> Subiendo server/ (plantillas Hestia) y api/")
     for sub in ("server", "api"):
         upload_tar(
             root,
             DTUNNEL_ROOT / sub,
             f"{REMOTE_OPT}/{sub}",
-            {".env", "node_modules", "data", "frps.runtime.toml", "frps.runtime.json"},
+            {".env", "node_modules", "data"},
         )
 
-    print("==> Escribiendo .env remotos")
-    upload_text(root, f"{REMOTE_OPT}/server/.env", server_env)
+    print("==> Escribiendo .env API")
     upload_text(root, f"{REMOTE_OPT}/api/.env", api_env)
+
+    print("==> Deteniendo contenedor frps legacy si existe")
+    run(root, "docker stop dtunnel_frps 2>/dev/null || true", check=False)
+    run(root, "docker rm dtunnel_frps 2>/dev/null || true", check=False)
 
     print("==> Plantillas Hestia")
     for name in ("dtunnel.stpl", "dtunnel.tpl"):
         content = (DTUNNEL_ROOT / "server" / "hestia" / name).read_text(encoding="utf-8")
         upload_text(root, f"/usr/local/hestia/data/templates/web/nginx/{name}", content)
 
-    print("==> Instalando frps (legacy; omitido si transport=native)")
-    tunnel_transport = cfg.get("TUNNEL_TRANSPORT", "native").lower()
-    if tunnel_transport in ("frp", "both"):
-        run(root, f"cd {REMOTE_OPT}/server && bash install.sh")
-    else:
-        run(root, "docker stop dtunnel_frps 2>/dev/null || true", check=False)
-
     print("==> Construyendo API")
-    if tunnel_transport == "native":
-        run(root, "docker stop dtunnel_frps 2>/dev/null || true", check=False)
     run(root, f"cd {REMOTE_OPT}/api && docker compose build && docker compose up -d")
 
     print("==> Reconstruyendo dominio Hestia (solo dtunnel)")
@@ -202,9 +194,6 @@ def main() -> int:
         run(root, f"{hb}/v-rebuild-web-domain {tunnel_user} {domain}")
         raise RuntimeError(f"nginx -t falló; dominio revertido a default. Detalle: {err}")
     run(root, "systemctl reload nginx")
-
-    print("==> Firewall 7000")
-    run(root, "ufw allow 7000/tcp 2>/dev/null || true", check=False)
 
     print("==> Subiendo web/ a public_html")
     user_client = ssh_connect(host, tunnel_user, cfg["DTUNNEL_PASSWORD"])

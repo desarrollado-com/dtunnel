@@ -52,7 +52,7 @@ def main() -> int:
     cl.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     cl.connect(cfg["SERVER_IP"], username=cfg["ROOT_USER"], password=cfg["ROOT_PASSWORD"])
 
-    print("==> Subir plantillas dtunnel (sin connection_upgrade)")
+    print("==> Subir plantillas dtunnel (API con soporte WebSocket)")
     for name in ("dtunnel.stpl", "dtunnel.tpl"):
         content = (ROOT / "server" / "hestia" / name).read_text(encoding="utf-8")
         upload_text(cl, f"/usr/local/hestia/data/templates/web/nginx/{name}", content)

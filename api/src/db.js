@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'crypto';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { applySchemaExtensions, parsePlanFeatures, stringifyPlanFeatures } from './schema-extensions.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = join(__dirname, '..', 'data');
@@ -165,6 +166,7 @@ function seedPlans() {
 }
 
 seedPlans();
+applySchemaExtensions(db);
 
 export function syncAdminUsers(adminEmails = []) {
   db.prepare('UPDATE users SET is_admin = 0').run();
@@ -214,21 +216,27 @@ export function getPlanBySlug(slug) {
   return db.prepare('SELECT * FROM plans WHERE slug = ? AND active = 1').get(slug);
 }
 
-export function listPlans(includeInactive = false) {
-  if (includeInactive) {
-    return db.prepare('SELECT * FROM plans ORDER BY sort_order, id').all();
-  }
-  return db.prepare('SELECT * FROM plans WHERE active = 1 ORDER BY sort_order, id').all();
+export function listPlans(includeInactive = false, { publicOnly = false } = {}) {
+  const clauses = [];
+  if (!includeInactive) clauses.push('active = 1');
+  if (publicOnly) clauses.push("visibility = 'public'");
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return db.prepare(`SELECT * FROM plans ${where} ORDER BY sort_order, id`).all();
 }
 
 export function createPlan(data) {
+  const features = data.features != null
+    ? (typeof data.features === 'string' ? data.features : stringifyPlanFeatures(data.features))
+    : stringifyPlanFeatures({});
   const stmt = db.prepare(`
     INSERT INTO plans (
       slug, name, description, price_monthly, price_yearly, currency,
-      tunnel_limit, reserved_subdomain_limit, custom_subdomain, sort_order, active
+      tunnel_limit, reserved_subdomain_limit, custom_subdomain, sort_order, active,
+      plan_type, visibility, max_seats, features, wompi_product_id
     ) VALUES (
       @slug, @name, @description, @price_monthly, @price_yearly, @currency,
-      @tunnel_limit, @reserved_subdomain_limit, @custom_subdomain, @sort_order, @active
+      @tunnel_limit, @reserved_subdomain_limit, @custom_subdomain, @sort_order, @active,
+      @plan_type, @visibility, @max_seats, @features, @wompi_product_id
     )
   `);
   return stmt.run({
@@ -243,6 +251,11 @@ export function createPlan(data) {
     custom_subdomain: data.custom_subdomain ? 1 : 0,
     sort_order: Number(data.sort_order || 0),
     active: data.active === false ? 0 : 1,
+    plan_type: data.plan_type || data.planType || 'personal',
+    visibility: data.visibility || 'public',
+    max_seats: Number(data.max_seats ?? data.maxSeats ?? 1),
+    features,
+    wompi_product_id: data.wompi_product_id || data.wompiProductId || null,
   });
 }
 
@@ -263,6 +276,13 @@ export function updatePlan(id, data) {
     custom_subdomain: data.custom_subdomain != null ? (data.custom_subdomain ? 1 : 0) : existing.custom_subdomain,
     sort_order: data.sort_order != null ? Number(data.sort_order) : existing.sort_order,
     active: data.active != null ? (data.active ? 1 : 0) : existing.active,
+    plan_type: data.plan_type ?? data.planType ?? existing.plan_type ?? 'personal',
+    visibility: data.visibility ?? existing.visibility ?? 'public',
+    max_seats: data.max_seats != null ? Number(data.max_seats) : (data.maxSeats != null ? Number(data.maxSeats) : (existing.max_seats ?? 1)),
+    features: data.features != null
+      ? (typeof data.features === 'string' ? data.features : stringifyPlanFeatures(data.features))
+      : existing.features,
+    wompi_product_id: data.wompi_product_id ?? data.wompiProductId ?? existing.wompi_product_id,
     id,
   };
   db.prepare(`
@@ -271,6 +291,8 @@ export function updatePlan(id, data) {
       price_monthly = @price_monthly, price_yearly = @price_yearly, currency = @currency,
       tunnel_limit = @tunnel_limit, reserved_subdomain_limit = @reserved_subdomain_limit,
       custom_subdomain = @custom_subdomain, sort_order = @sort_order, active = @active,
+      plan_type = @plan_type, visibility = @visibility, max_seats = @max_seats,
+      features = @features, wompi_product_id = @wompi_product_id,
       updated_at = datetime('now')
     WHERE id = @id
   `).run(merged);
@@ -283,16 +305,40 @@ export function getUserLimits(user, anonFallback = 1) {
       tunnelLimit: getAnonTunnelLimit(anonFallback),
       reservedSubdomainLimit: 0,
       customSubdomain: false,
+      customCname: false,
+      customCnameLimit: 0,
       plan: null,
+      features: {},
     };
   }
-  const plan = getPlanBySlug(user.plan || 'free') || getPlanBySlug('free');
+
+  let planSlug = user.plan || 'free';
+  let plan = getPlanBySlug(planSlug) || getPlanBySlug('free');
+
+  if (user.primary_org_id) {
+    const org = db.prepare('SELECT * FROM organizations WHERE id = ? AND active = 1').get(user.primary_org_id);
+    if (org) {
+      const orgPlan = getPlanBySlug(org.plan);
+      if (orgPlan?.plan_type === 'enterprise') {
+        plan = orgPlan;
+        planSlug = org.plan;
+      }
+    }
+  }
+
+  const features = parsePlanFeatures(plan?.features);
   return {
     tunnelLimit: user.tunnel_limit_override ?? plan?.tunnel_limit ?? 5,
     reservedSubdomainLimit: user.reserved_subdomain_limit_override ?? plan?.reserved_subdomain_limit ?? 5,
-    customSubdomain: Boolean(plan?.custom_subdomain),
-    plan: plan?.slug || user.plan,
-    planName: plan?.name || user.plan,
+    customSubdomain: Boolean(plan?.custom_subdomain) && features.customSubdomain !== false,
+    customCname: Boolean(features.customCname),
+    customCnameLimit: Number(features.customCnameLimit || 0),
+    plan: plan?.slug || planSlug,
+    planName: plan?.name || planSlug,
+    planType: plan?.plan_type || 'personal',
+    maxSeats: plan?.max_seats ?? 1,
+    features,
+    organizationId: user.primary_org_id || null,
   };
 }
 
@@ -409,12 +455,28 @@ export function countAnonymousTunnelsForIp(clientIp) {
   ).get(clientIp).c;
 }
 
-export function registerTunnel(userId, subdomain, port, clientIp = null) {
+export function registerTunnel(userId, subdomain, port, meta = {}) {
+  const {
+    clientIp = null,
+    userAgent = null,
+    clientVersion = null,
+    fingerprintHash = null,
+  } = meta;
   const stmt = db.prepare(`
-    INSERT INTO active_tunnels (user_id, subdomain, port, client_ip, last_heartbeat)
-    VALUES (?, ?, ?, ?, datetime('now'))
+    INSERT INTO active_tunnels (
+      user_id, subdomain, port, client_ip, user_agent, client_version, fingerprint_hash, last_heartbeat
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `);
-  return stmt.run(userId ?? null, subdomain, port, clientIp);
+  return stmt.run(
+    userId ?? null,
+    subdomain,
+    port,
+    clientIp,
+    userAgent,
+    clientVersion,
+    fingerprintHash,
+  );
 }
 
 export function findTunnelBySubdomain(subdomain) {
@@ -481,16 +543,53 @@ export function subdomainTaken(subdomain) {
   return db.prepare('SELECT id FROM active_tunnels WHERE subdomain = ?').get(subdomain);
 }
 
-export function listUsers() {
-  return db.prepare(`
+function userListSelectClause() {
+  return `
     SELECT
       u.id, u.email, u.plan, u.is_admin, u.active, u.email_verified,
       u.tunnel_limit_override, u.reserved_subdomain_limit_override, u.created_at,
       (SELECT COUNT(*) FROM reserved_subdomains rs WHERE rs.user_id = u.id) AS reserved_count,
       (SELECT COUNT(*) FROM active_tunnels at WHERE at.user_id = u.id) AS active_tunnel_count
     FROM users u
+  `;
+}
+
+export function listUsers() {
+  return db.prepare(`${userListSelectClause()} ORDER BY u.created_at DESC`).all();
+}
+
+export function listUsersPaginated({
+  q = null,
+  plan = null,
+  active = null,
+  limit = 25,
+  offset = 0,
+} = {}) {
+  const params = [];
+  const where = [];
+  if (q) {
+    where.push('u.email LIKE ?');
+    params.push(`%${String(q).trim()}%`);
+  }
+  if (plan) {
+    where.push('u.plan = ?');
+    params.push(plan);
+  }
+  if (active !== null && active !== undefined && active !== '') {
+    where.push('u.active = ?');
+    params.push(active ? 1 : 0);
+  }
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 200);
+  const safeOffset = Math.max(Number(offset) || 0, 0);
+  const users = db.prepare(`
+    ${userListSelectClause()}
+    ${clause}
     ORDER BY u.created_at DESC
-  `).all();
+    LIMIT ? OFFSET ?
+  `).all(...params, safeLimit, safeOffset);
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM users u ${clause}`).get(...params).c;
+  return { users, total, limit: safeLimit, offset: safeOffset };
 }
 
 export function updateUser(id, data) {
@@ -538,7 +637,8 @@ export function listUserTunnels(userId) {
 export function listActiveTunnels() {
   return db.prepare(`
     SELECT
-      at.id, at.user_id, at.subdomain, at.port, at.client_ip, at.last_heartbeat, at.created_at,
+      at.id, at.user_id, at.subdomain, at.port, at.client_ip, at.user_agent,
+      at.client_version, at.fingerprint_hash, at.last_heartbeat, at.created_at,
       u.email
     FROM active_tunnels at
     LEFT JOIN users u ON u.id = at.user_id
@@ -585,7 +685,79 @@ export function getAdminStats() {
   };
 }
 
+export function getAdminHealthMeta() {
+  const stats = getAdminStats();
+  return {
+    ...stats,
+    auditLogCount: db.prepare('SELECT COUNT(*) AS c FROM audit_logs').get().c,
+    usersUnverified: db.prepare('SELECT COUNT(*) AS c FROM users WHERE email_verified = 0').get().c,
+    usersSuspended: stats.users - stats.activeUsers,
+    admins: db.prepare('SELECT COUNT(*) AS c FROM users WHERE is_admin = 1').get().c,
+  };
+}
+
+export function getAdminAnalytics(days = 14) {
+  const safeDays = Math.min(Math.max(Number(days) || 14, 1), 90);
+  const since = `-${safeDays} days`;
+
+  const signups = db.prepare(`
+    SELECT date(created_at) AS day, COUNT(*) AS count
+    FROM users
+    WHERE created_at >= datetime('now', ?)
+    GROUP BY date(created_at)
+    ORDER BY day
+  `).all(since);
+
+  const tunnelOpens = db.prepare(`
+    SELECT date(created_at) AS day, COUNT(*) AS count
+    FROM audit_logs
+    WHERE action = 'tunnel.open' AND created_at >= datetime('now', ?)
+    GROUP BY date(created_at)
+    ORDER BY day
+  `).all(since);
+
+  const tunnelCloses = db.prepare(`
+    SELECT date(created_at) AS day, COUNT(*) AS count
+    FROM audit_logs
+    WHERE action = 'tunnel.close' AND created_at >= datetime('now', ?)
+    GROUP BY date(created_at)
+    ORDER BY day
+  `).all(since);
+
+  const planDistribution = db.prepare(`
+    SELECT plan, COUNT(*) AS count FROM users GROUP BY plan ORDER BY count DESC
+  `).all();
+
+  const recentActions = db.prepare(`
+    SELECT action, COUNT(*) AS count
+    FROM audit_logs
+    WHERE created_at >= datetime('now', '-24 hours')
+    GROUP BY action
+    ORDER BY count DESC
+    LIMIT 10
+  `).all();
+
+  return {
+    days: safeDays,
+    signups,
+    tunnelOpens,
+    tunnelCloses,
+    planDistribution,
+    recentActions,
+    last24h: {
+      signups: db.prepare(`
+        SELECT COUNT(*) AS c FROM users WHERE created_at >= datetime('now', '-24 hours')
+      `).get().c,
+      tunnelOpens: db.prepare(`
+        SELECT COUNT(*) AS c FROM audit_logs
+        WHERE action = 'tunnel.open' AND created_at >= datetime('now', '-24 hours')
+      `).get().c,
+    },
+  };
+}
+
 export function publicPlan(plan) {
+  const features = parsePlanFeatures(plan.features);
   return {
     id: plan.id,
     slug: plan.slug,
@@ -597,8 +769,13 @@ export function publicPlan(plan) {
     tunnelLimit: plan.tunnel_limit,
     reservedSubdomainLimit: plan.reserved_subdomain_limit,
     customSubdomain: Boolean(plan.custom_subdomain),
+    planType: plan.plan_type || 'personal',
+    visibility: plan.visibility || 'public',
+    maxSeats: plan.max_seats ?? 1,
+    features,
     sortOrder: plan.sort_order,
     active: Boolean(plan.active),
+    wompiProductId: plan.wompi_product_id || null,
   };
 }
 
@@ -609,12 +786,17 @@ export function publicUser(user) {
     email: user.email,
     plan: user.plan,
     planName: limits.planName,
+    planType: limits.planType,
     isAdmin: Boolean(user.is_admin),
     active: Boolean(user.active),
     emailVerified: Boolean(user.email_verified),
     tunnelLimit: limits.tunnelLimit,
     reservedSubdomainLimit: limits.reservedSubdomainLimit,
     customSubdomain: limits.customSubdomain,
+    customCname: limits.customCname,
+    customCnameLimit: limits.customCnameLimit,
+    features: limits.features,
+    organizationId: limits.organizationId,
     tunnelLimitOverride: user.tunnel_limit_override,
     reservedSubdomainLimitOverride: user.reserved_subdomain_limit_override,
     createdAt: user.created_at,
@@ -677,6 +859,55 @@ export function updateAdminSettings(data) {
   if (data.heartbeatTimeoutMin != null) setSetting('heartbeat_timeout_min', data.heartbeatTimeoutMin);
   if (data.staleTunnelHours != null) setSetting('stale_tunnel_hours', data.staleTunnelHours);
   return getAdminSettings();
+}
+
+export function setTotpPendingSecret(userId, secret) {
+  db.prepare('UPDATE users SET totp_pending_secret = ? WHERE id = ?').run(secret, userId);
+}
+
+export function enableTotp(userId, secret, backupHashesJson) {
+  db.prepare(`
+    UPDATE users SET totp_secret = ?, totp_enabled = 1, totp_backup_hashes = ?, totp_pending_secret = NULL
+    WHERE id = ?
+  `).run(secret, backupHashesJson, userId);
+}
+
+export function disableTotp(userId) {
+  db.prepare(`
+    UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_backup_hashes = NULL, totp_pending_secret = NULL
+    WHERE id = ?
+  `).run(userId);
+}
+
+export function updateTotpBackupHashes(userId, backupHashesJson) {
+  db.prepare('UPDATE users SET totp_backup_hashes = ? WHERE id = ?').run(backupHashesJson, userId);
+}
+
+export function getTotpState(user) {
+  return {
+    enabled: Boolean(user.totp_enabled),
+    hasPending: Boolean(user.totp_pending_secret),
+  };
+}
+
+export function getLiveMetrics() {
+  const stats = getAdminStats();
+  return {
+    ts: new Date().toISOString(),
+    stats: {
+      ...stats,
+      auditLastHour: db.prepare(`
+        SELECT COUNT(*) AS c FROM audit_logs WHERE created_at >= datetime('now', '-1 hour')
+      `).get().c,
+      signupsLastHour: db.prepare(`
+        SELECT COUNT(*) AS c FROM users WHERE created_at >= datetime('now', '-1 hour')
+      `).get().c,
+      tunnelOpensLastHour: db.prepare(`
+        SELECT COUNT(*) AS c FROM audit_logs
+        WHERE action = 'tunnel.open' AND created_at >= datetime('now', '-1 hour')
+      `).get().c,
+    },
+  };
 }
 
 export default db;

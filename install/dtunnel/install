@@ -53,7 +53,7 @@ verify() {
   echo "  dtunnel --port 88080"
   echo ""
   echo "Documentación: https://dtunnel.desarrollado.com/docs.html"
-  echo "Modo legacy con frpc: npm install -g @desarrollado/dtunnel -- y dtunnel --frp --port PUERTO"
+  echo "Uso: dtunnel --port PUERTO"
 }
 
 main() {

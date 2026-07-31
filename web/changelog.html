@@ -24,7 +24,7 @@
       <a href="/">Inicio</a>
       <a href="/docs.html">Documentación</a>
       <a href="/changelog.html" aria-current="page">Changelog</a>
-      <div class="nav-actions">
+      <div class="nav-actions" data-auth-nav>
         <a href="/register.html" class="btn btn-outlined">Registrarse</a>
         <a href="/login.html" class="btn btn-primary">Iniciar sesión</a>
       </div>
@@ -35,6 +35,44 @@
     <h1>Changelog</h1>
     <p class="lead">Historial de versiones del CLI, instalador curl, web y API.
       También en <a href="https://github.com/desarrollado-com/dtunnel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">GitHub</a>.</p>
+
+    <article class="changelog-entry" id="v2-6-0">
+      <header class="changelog-header">
+        <h2><a href="#v2-6-0">2.6.0</a></h2>
+        <time datetime="2026-07-31">31 jul 2026</time>
+      </header>
+      <ul class="docs-list">
+        <li><strong>Túnel nativo único</strong> — eliminado frpc/frps; CLI y API usan WebSocket + gateway HTTP.</li>
+        <li><strong>Dashboard usuario</strong> — consola tipo admin en <a href="/dashboard.html#/overview">Mi cuenta</a>: panel, subdominios, túneles, tráfico en vivo, planes y CLI.</li>
+        <li>Login, registro y recuperación con el mismo diseño workspace.</li>
+      </ul>
+    </article>
+
+    <article class="changelog-entry" id="v2-3-0">
+      <header class="changelog-header">
+        <h2><a href="#v2-3-0">2.3.0</a></h2>
+        <time datetime="2026-07-31">31 jul 2026</time>
+      </header>
+      <ul class="docs-list">
+        <li><strong>Planes públicos y privados</strong> — los privados requieren acceso concedido por admin.</li>
+        <li>Página <a href="/dashboard.html#/billing">Planes y suscripción</a> con historial y checkout.</li>
+        <li>Admin: panel Suscripciones y gestión de acceso a planes privados por usuario.</li>
+      </ul>
+    </article>
+
+    <article class="changelog-entry" id="v2-2-0">
+      <header class="changelog-header">
+        <h2><a href="#v2-2-0">2.2.0</a></h2>
+        <time datetime="2026-07-31">31 jul 2026</time>
+      </header>
+      <ul class="docs-list">
+        <li><strong>Trazas HTTP</strong> — log en tiempo real en el dashboard; trazabilidad en admin; retención 14 días.</li>
+        <li>CLI: <code>dtunnel logs</code> y <code>dtunnel logs --follow</code>.</li>
+        <li>Admin: consola cloud, analítica, RBAC (roles CRUD), cupones, 2FA, impersonación, métricas en vivo.</li>
+        <li>Billing y organizaciones (API preparada para Wompi).</li>
+        <li>Corregido: scroll del menú lateral admin y botón de cambio de tema.</li>
+      </ul>
+    </article>
 
     <article class="changelog-entry" id="v2-1-0">
       <header class="changelog-header">
@@ -90,7 +128,7 @@
         <time datetime="2026-07-30">30 jul 2026</time>
       </header>
       <ul class="docs-list">
-        <li>Cambiar contraseña desde el <a href="/dashboard.html">dashboard</a>.</li>
+        <li>Cambiar contraseña desde <a href="/dashboard.html#/security">Seguridad</a> en el panel.</li>
         <li>Admin: suspender usuario y cerrar todos sus túneles.</li>
         <li>Purga automática de túneles obsoletos (<code>install-cron.py</code>).</li>
       </ul>
@@ -265,6 +303,7 @@
   <footer class="footer" data-site-footer></footer>
   <script src="/js/main.js"></script>
   <script src="/js/site-footer.js"></script>
+  <script src="/js/nav-auth.js"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>

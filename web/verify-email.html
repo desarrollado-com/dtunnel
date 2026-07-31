@@ -6,33 +6,50 @@
   <title>Verificar email — dtunnel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
   <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
-  <script type="importmap">{"imports":{"@material/web/":"https://esm.run/@material/web/"}}</script>
-  <script type="module" src="/js/m3.js"></script>
 </head>
-<body>
-  <header class="top-app-bar">
-    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel</a>
-  </header>
-  <main class="auth-page">
-    <h1>Verificar email</h1>
-    <p id="status" class="text-muted">Verificando tu cuenta…</p>
-    <p id="msg" class="form-error" hidden></p>
-    <p id="ok" class="form-success" hidden></p>
-    <p class="text-muted" style="margin-top:1rem;font-size:0.9rem">
-      <a href="/login.html">Iniciar sesión</a>
-    </p>
-  </main>
-  <footer class="footer" data-site-footer></footer>
-  <script src="/js/site-footer.js"></script>
+<body class="ws-auth-body">
+  <div class="ws-auth-shell">
+    <div class="ws-auth-brand">
+      <a href="/" class="ws-sidebar-brand">
+        <span class="material-symbols-outlined filled">hub</span>
+        <div>
+          <strong>dtunnel</strong>
+          <small>Mi cuenta</small>
+        </div>
+      </a>
+      <p class="ws-auth-tagline">
+        Activando tu cuenta para que puedas usar el panel y el CLI.
+      </p>
+    </div>
+
+    <main class="ws-auth-panel">
+      <div class="ws-card ws-auth-card">
+        <h1>Verificar email</h1>
+        <p id="status" class="auth-lead">Verificando tu cuenta…</p>
+        <p id="msg" class="form-error" hidden></p>
+        <p id="ok" class="form-success" hidden></p>
+        <p class="auth-links" id="after-verify" hidden>
+          <a href="/login.html" class="btn btn-primary btn-sm">Iniciar sesión</a>
+          <a href="/dashboard.html#/overview" class="btn btn-ghost btn-sm">Ir al panel</a>
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <button type="button" class="theme-fab" id="theme-toggle" aria-label="Cambiar tema">
+    <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+  </button>
+
   <script>
     const token = new URLSearchParams(window.location.search).get('token');
     const status = document.getElementById('status');
     const msg = document.getElementById('msg');
     const ok = document.getElementById('ok');
+    const after = document.getElementById('after-verify');
 
     if (!token) {
       status.hidden = true;
@@ -50,6 +67,7 @@
           status.hidden = true;
           ok.textContent = `Cuenta verificada (${data.email}). Ya puedes iniciar sesión.`;
           ok.hidden = false;
+          after.hidden = false;
           sessionStorage.removeItem('dtunnel_pending_email');
         })
         .catch((err) => {

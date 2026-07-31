@@ -1,6 +1,62 @@
 # Changelog — @desarrollado/dtunnel
 
-Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
+Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md). Política SemVer: [../docs/versioning.md](../docs/versioning.md).
+
+## [2.3.0] - 2026-07-31
+
+### Eliminado
+
+- Modo legacy `frpc`: `--frp`, `--legacy`, `install-frpc`, `frpc-install.js`.
+
+### Cambiado
+
+- Solo túnel nativo Node.js + WebSocket.
+
+## [2.2.0] - 2026-07-31
+
+Versión **menor (Y)**: nueva función compatible con 2.1.x.
+
+### Añadido
+
+- `dtunnel logs` — últimas trazas HTTP de tus túneles.
+- `dtunnel logs --follow` / `-f` — seguimiento en tiempo real vía WebSocket.
+- Filtro por subdominio: `dtunnel logs -s mi-api`.
+
+## [2.1.0] - 2026-07-31
+
+### Mejorado (rendimiento)
+
+- Protocolo **binario** para cuerpos HTTP/WS ≥ 512 bytes (sin JSON+base64).
+- Compresión **perMessageDeflate** en el WebSocket del túnel.
+- Hasta **32** peticiones HTTP concurrentes (antes 16).
+- HTTP keep-alive hacia el navegador (sin `Connection: close` en cada respuesta).
+
+## [2.0.9] - 2026-07-31
+
+### Añadido
+
+- **WebSocket de aplicación** (HMR Next.js/Vite, NestJS `@WebSocketGateway`) a través del túnel HTTPS.
+- Nginx: cabeceras `Upgrade` / `Connection` en subdominios wildcard.
+
+## [2.0.8] - 2026-07-31
+
+### Corregido
+
+- Página en blanco en navegador: `fetch` descomprimía gzip pero reenviaba `Content-Encoding: gzip` (se elimina `Accept-Encoding` hacia localhost y se normalizan cabeceras de respuesta).
+
+## [2.0.7] - 2026-07-31
+
+### Corregido
+
+- Concurrencia en túnel nativo: hasta 16 peticiones HTTP en paralelo (antes el handler async podía bloquear la carga del navegador).
+- Gateway: `Content-Length` explícito y `Connection: close` para evitar páginas en blanco con keep-alive.
+
+## [2.0.6] - 2026-07-31
+
+### Mejorado
+
+- Aviso si el puerto local no responde antes de abrir el túnel (evita 502 por puerto incorrecto, p. ej. Next en 3099).
+- Heartbeat en Windows: `windowsHide` y cierre más seguro del proceso (menos crashes al salir).
 
 ## [2.0.5] - 2026-07-30
 

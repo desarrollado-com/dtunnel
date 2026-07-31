@@ -18,6 +18,7 @@
   <main class="auth-page">
     <h1>Administración</h1>
     <p class="text-muted" style="margin-bottom:1rem;font-size:0.9rem">Solo cuentas con permisos de administrador.</p>
+
     <form id="login-form" class="auth-form">
       <div class="form-group">
         <label for="email">Email</label>
@@ -30,15 +31,36 @@
       <p id="msg" class="form-error" hidden></p>
       <button type="submit" class="btn btn-primary btn-block">Entrar</button>
     </form>
-    <p class="text-muted" style="margin-top:1rem;font-size:0.9rem">
-      <a href="https://dtunnel.desarrollado.com/">Volver al sitio público</a>
-    </p>
+
+    <form id="twofa-form" class="auth-form" hidden>
+      <p class="text-muted" style="margin-bottom:1rem;font-size:0.9rem">Introduce el código de tu app de autenticación.</p>
+      <div class="form-group">
+        <label for="twofa-code">Código 2FA</label>
+        <input type="text" id="twofa-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="8" required autocomplete="one-time-code" placeholder="000000">
+      </div>
+      <div class="form-group">
+        <label for="backup-code">O código de respaldo</label>
+        <input type="text" id="backup-code" autocomplete="off" placeholder="Opcional">
+      </div>
+      <p id="twofa-msg" class="form-error" hidden></p>
+      <button type="submit" class="btn btn-primary btn-block">Verificar</button>
+      <button type="button" class="btn btn-ghost btn-block" id="twofa-back" style="margin-top:0.5rem">Volver</button>
+    </form>
   </main>
   <script type="module">
     import { API_BASE } from './js/config.js';
     if (localStorage.getItem('dtunnel_token')) {
       window.location.href = '/admin.html';
     }
+    let pending2fa = null;
+
+    function finishLogin(data) {
+      if (!data.isAdmin) throw new Error('Esta cuenta no tiene permisos de administrador');
+      localStorage.setItem('dtunnel_token', data.token);
+      localStorage.setItem('dtunnel_email', data.email);
+      window.location.href = '/admin.html';
+    }
+
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const msg = document.getElementById('msg');
@@ -54,10 +76,44 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error');
-        if (!data.isAdmin) throw new Error('Esta cuenta no tiene permisos de administrador');
-        localStorage.setItem('dtunnel_token', data.token);
-        localStorage.setItem('dtunnel_email', data.email);
-        window.location.href = '/admin.html';
+        if (data.requires2fa) {
+          pending2fa = data.tempToken;
+          document.getElementById('login-form').hidden = true;
+          document.getElementById('twofa-form').hidden = false;
+          document.getElementById('twofa-code').focus();
+          return;
+        }
+        finishLogin(data);
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.hidden = false;
+      }
+    });
+
+    document.getElementById('twofa-back').addEventListener('click', () => {
+      pending2fa = null;
+      document.getElementById('twofa-form').hidden = true;
+      document.getElementById('login-form').hidden = false;
+    });
+
+    document.getElementById('twofa-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('twofa-msg');
+      msg.hidden = true;
+      try {
+        const backup = document.getElementById('backup-code').value.trim();
+        const res = await fetch(`${API_BASE}/auth/2fa/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tempToken: pending2fa,
+            code: document.getElementById('twofa-code').value.trim(),
+            backupCode: backup || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error');
+        finishLogin(data);
       } catch (err) {
         msg.textContent = err.message;
         msg.hidden = false;

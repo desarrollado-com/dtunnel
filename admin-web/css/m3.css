@@ -1,0 +1,139 @@
+/**
+ * Material Design 3 — tokens
+ * https://m3.material.io/
+ */
+
+/* --- Tema oscuro (predeterminado) --- */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --md-sys-color-primary: #b4c5ff;
+  --md-sys-color-on-primary: #1a2a5e;
+  --md-sys-color-primary-container: #2b4278;
+  --md-sys-color-on-primary-container: #dce1ff;
+
+  --md-sys-color-secondary: #c2c5dd;
+  --md-sys-color-on-secondary: #2c2f42;
+  --md-sys-color-secondary-container: #424659;
+  --md-sys-color-on-secondary-container: #dee0f9;
+
+  --md-sys-color-tertiary: #7dd8da;
+  --md-sys-color-on-tertiary: #003738;
+  --md-sys-color-tertiary-container: #1e4e4f;
+  --md-sys-color-on-tertiary-container: #bcebec;
+
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+
+  --md-sys-color-surface: #121318;
+  --md-sys-color-on-surface: #e3e2e9;
+  --md-sys-color-on-surface-variant: #c8cad4;
+  --md-sys-color-surface-dim: #121318;
+  --md-sys-color-surface-bright: #38393f;
+  --md-sys-color-surface-container-lowest: #0c0e13;
+  --md-sys-color-surface-container-low: #1a1b21;
+  --md-sys-color-surface-container: #1e1f25;
+  --md-sys-color-surface-container-high: #282a31;
+  --md-sys-color-surface-container-highest: #33353c;
+
+  --md-sys-color-outline: #8e9099;
+  --md-sys-color-outline-variant: #44464f;
+
+  --md-sys-color-inverse-surface: #e3e2e9;
+  --md-sys-color-inverse-on-surface: #303034;
+  --md-sys-color-inverse-primary: #4b5c92;
+
+  --theme-fab-shadow: 0 4px 8px 3px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --theme-fab-shadow-hover: 0 6px 12px 4px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Tema claro --- */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --md-sys-color-primary: #3b5ba9;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #dce1ff;
+  --md-sys-color-on-primary-container: #1a2a5e;
+
+  --md-sys-color-secondary: #585e72;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #dce1f9;
+  --md-sys-color-on-secondary-container: #151b2c;
+
+  --md-sys-color-tertiary: #00696b;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #9cf0f2;
+  --md-sys-color-on-tertiary-container: #002020;
+
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+
+  --md-sys-color-surface: #faf8ff;
+  --md-sys-color-on-surface: #1a1b21;
+  --md-sys-color-on-surface-variant: #45464f;
+  --md-sys-color-surface-dim: #dad9e0;
+  --md-sys-color-surface-bright: #faf8ff;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f4f3fa;
+  --md-sys-color-surface-container: #eeedf4;
+  --md-sys-color-surface-container-high: #e8e7ef;
+  --md-sys-color-surface-container-highest: #e2e2e9;
+
+  --md-sys-color-outline: #767680;
+  --md-sys-color-outline-variant: #c6c6d0;
+
+  --md-sys-color-inverse-surface: #303034;
+  --md-sys-color-inverse-on-surface: #f2f0f4;
+  --md-sys-color-inverse-primary: #b4c5ff;
+
+  --theme-fab-shadow: 0 4px 8px 3px rgba(26, 27, 33, 0.12), 0 1px 3px rgba(26, 27, 33, 0.18);
+  --theme-fab-shadow-hover: 0 6px 12px 4px rgba(26, 27, 33, 0.14), 0 2px 4px rgba(26, 27, 33, 0.2);
+}
+
+:root {
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+
+  --md-ref-typeface-brand: 'Roboto', system-ui, sans-serif;
+  --md-ref-typeface-plain: 'Roboto', system-ui, sans-serif;
+
+  --bg: var(--md-sys-color-surface);
+  --surface: var(--md-sys-color-surface-container);
+  --border: var(--md-sys-color-outline-variant);
+  --text: var(--md-sys-color-on-surface);
+  --muted: var(--md-sys-color-on-surface-variant);
+  --accent: var(--md-sys-color-primary-container);
+  --accent2: var(--md-sys-color-primary);
+  --radius: var(--md-sys-shape-corner-medium);
+  --font: var(--md-ref-typeface-plain);
+  --mono: 'Roboto Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}

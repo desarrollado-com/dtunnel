@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "2.0.5",
+  "version": "2.3.0",
   "description": "Expón tu localhost como URL pública HTTPS en dtunnel.desarrollado.com",
   "type": "module",
   "bin": {
@@ -19,7 +19,6 @@
     "ngrok",
     "localhost",
     "reverse-proxy",
-    "frp",
     "dtunnel"
   ],
   "homepage": "https://dtunnel.desarrollado.com",

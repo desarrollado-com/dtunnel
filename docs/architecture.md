@@ -31,13 +31,7 @@
 | Gateway túnel nativo | 18080 | Solo localhost (Nginx proxy) |
 | WebSocket túnel | 3001 `/tunnel/ws` | Solo vía Nginx |
 
-## Modo legacy (frp)
-
-Opcional: `TUNNEL_TRANSPORT=frp` o `dtunnel --frp`. Usa `frps` :7000 / :18080 y binario `frpc`.
-En producción actual el transporte por defecto es **native** (`frps` detenido).
-
 ## Referencias
 
-- [tunnel-v2-native.md](tunnel-v2-native.md)
 - [docker-compose.example.md](docker-compose.example.md)
 - [hestia.md](hestia.md)

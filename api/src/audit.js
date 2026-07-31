@@ -1,6 +1,24 @@
 import db from './db.js';
+import { EventEmitter } from 'events';
 
 const MAX_LOG_ROWS = 10_000;
+
+export const auditEmitter = new EventEmitter();
+auditEmitter.setMaxListeners(100);
+
+function formatAuditRow(r) {
+  return {
+    id: r.id,
+    actorUserId: r.actor_user_id,
+    actorEmail: r.actor_email,
+    action: r.action,
+    targetType: r.target_type,
+    targetId: r.target_id,
+    details: r.details ? JSON.parse(r.details) : null,
+    ip: r.ip,
+    createdAt: r.created_at,
+  };
+}
 
 export function appendAuditLog({
   actorUserId = null,
@@ -12,7 +30,7 @@ export function appendAuditLog({
   ip = null,
 }) {
   if (!action) return;
-  db.prepare(`
+  const result = db.prepare(`
     INSERT INTO audit_logs (actor_user_id, actor_email, action, target_type, target_id, details, ip)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
@@ -25,6 +43,10 @@ export function appendAuditLog({
     ip,
   );
   trimAuditLogs();
+  const row = db.prepare('SELECT * FROM audit_logs WHERE id = ?').get(result.lastInsertRowid);
+  if (row) {
+    auditEmitter.emit('audit', formatAuditRow(row));
+  }
 }
 
 function trimAuditLogs() {
@@ -60,17 +82,7 @@ export function listAuditLogs({ limit = 100, offset = 0, action = null, q = null
   `).all(...params, limit, offset);
   const total = db.prepare(`SELECT COUNT(*) AS c FROM audit_logs ${clause}`).get(...params).c;
   return {
-    logs: rows.map((r) => ({
-      id: r.id,
-      actorUserId: r.actor_user_id,
-      actorEmail: r.actor_email,
-      action: r.action,
-      targetType: r.target_type,
-      targetId: r.target_id,
-      details: r.details ? JSON.parse(r.details) : null,
-      ip: r.ip,
-      createdAt: r.created_at,
-    })),
+    logs: rows.map((r) => formatAuditRow(r)),
     total,
   };
 }

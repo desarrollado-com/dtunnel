@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin — dtunnel</title>
+  <title>Consola — dtunnel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -11,219 +11,494 @@
   <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <header class="top-app-bar">
-    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel <span class="admin-badge">admin</span></a>
-    <nav class="nav">
-      <a href="https://dtunnel.desarrollado.com/dashboard.html">Mi cuenta</a>
-      <a href="https://dtunnel.desarrollado.com/docs.html">Documentación</a>
-      <a href="https://dtunnel.desarrollado.com/status.html">Estado</a>
-      <a href="#" id="logout">Cerrar sesión</a>
-    </nav>
-  </header>
+<body class="ws-body">
+  <div class="ws-shell">
+    <aside class="ws-sidebar" id="ws-sidebar">
+      <div class="ws-sidebar-brand">
+        <span class="material-symbols-outlined filled">hub</span>
+        <div>
+          <strong>dtunnel</strong>
+          <small>Consola admin</small>
+        </div>
+      </div>
+      <nav class="ws-nav" id="ws-nav"></nav>
+      <div class="ws-sidebar-footer">
+        <a href="https://dtunnel.desarrollado.com/docs.html" target="_blank" rel="noopener">Documentación</a>
+        ·
+        <a href="https://dtunnel.desarrollado.com/status.html" target="_blank" rel="noopener">Estado público</a>
+      </div>
+    </aside>
 
-  <main class="admin-page">
-    <div class="admin-header">
-      <h1>Panel de administración</h1>
-      <p id="admin-email" class="admin-subtitle"></p>
+    <div class="ws-main">
+      <div id="impersonation-banner" class="ws-impersonation-banner" hidden></div>
+      <header class="ws-topbar">
+        <button type="button" class="ws-sidebar-toggle" id="sidebar-toggle" aria-label="Menú">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <nav class="ws-breadcrumb" id="ws-breadcrumb" aria-label="Ruta"></nav>
+        <div class="ws-topbar-actions">
+          <div class="ws-search-wrap">
+            <span class="material-symbols-outlined">search</span>
+            <input type="search" id="global-search" class="ws-global-search" placeholder="Buscar usuarios por email…" autocomplete="off">
+          </div>
+          <span class="ws-user-chip" id="admin-email"></span>
+          <button type="button" class="btn btn-ghost btn-sm" id="logout">Salir</button>
+        </div>
+      </header>
+
+      <main class="ws-content">
+        <section class="ws-panel active" id="panel-overview" data-route="overview"></section>
+        <section class="ws-panel" id="panel-console" data-route="console">
+          <div class="ws-page-header">
+            <div>
+              <h1>Consola en vivo</h1>
+              <p>Tráfico HTTP, auditoría y métricas del sistema en tiempo real.</p>
+            </div>
+            <span class="ws-live-dot" id="console-live-indicator">Conectando…</span>
+          </div>
+          <div class="ws-console-stats" id="console-stats">
+            <article class="ws-stat"><div class="ws-stat-label">Túneles activos</div><div class="ws-stat-value" id="console-stat-tunnels">—</div></article>
+            <article class="ws-stat"><div class="ws-stat-label">Anónimos</div><div class="ws-stat-value" id="console-stat-anon">—</div></article>
+            <article class="ws-stat"><div class="ws-stat-label">Usuarios</div><div class="ws-stat-value" id="console-stat-users">—</div></article>
+            <article class="ws-stat"><div class="ws-stat-label">Eventos (1 h)</div><div class="ws-stat-value" id="console-stat-audit">—</div></article>
+          </div>
+          <div class="ws-console-chart-wrap">
+            <div class="ws-chart" id="console-chart"></div>
+          </div>
+          <div class="ws-console-toolbar">
+            <div class="ws-table-filters">
+              <select id="console-filter" class="admin-select">
+                <option value="all">Todo</option>
+                <option value="trace">Solo HTTP</option>
+                <option value="audit">Solo auditoría</option>
+              </select>
+              <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem">
+                <input type="checkbox" id="console-pause">
+                Pausar scroll
+              </label>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="console-clear">Limpiar</button>
+          </div>
+          <div class="ws-console-feed" id="console-feed" aria-live="polite"></div>
+        </section>
+        <section class="ws-panel" id="panel-analytics" data-route="analytics"></section>
+        <section class="ws-panel" id="panel-health" data-route="health"></section>
+
+        <section class="ws-panel" id="panel-users" data-route="users">
+          <div class="ws-page-header">
+            <div>
+              <h1>Usuarios</h1>
+              <p>Gestiona cuentas, planes y permisos.</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="new-user-btn">Crear usuario</button>
+          </div>
+          <div class="ws-table-toolbar">
+            <div class="ws-table-filters">
+              <input type="search" id="users-search" class="admin-search" placeholder="Filtrar por email…">
+              <select id="users-plan-filter" class="admin-select">
+                <option value="">Todos los planes</option>
+              </select>
+              <select id="users-active-filter" class="admin-select">
+                <option value="">Todos los estados</option>
+                <option value="1">Activos</option>
+                <option value="0">Suspendidos</option>
+              </select>
+            </div>
+            <div class="admin-toolbar-actions">
+              <button type="button" class="btn btn-ghost btn-sm" id="export-users-btn">Exportar CSV</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="refresh-users">Actualizar</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table" id="users-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Plan</th>
+                  <th>Estado</th>
+                  <th>Verificado</th>
+                  <th>Túneles</th>
+                  <th>Subdominios</th>
+                  <th>Registro</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="ws-pagination" id="users-pagination"></div>
+        </section>
+
+        <section class="ws-panel" id="panel-organizations" data-route="organizations"></section>
+
+        <section class="ws-panel" id="panel-plans" data-route="plans">
+          <div class="ws-page-header">
+            <div>
+              <h1>Planes</h1>
+              <p>Configura límites y precios.</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="new-plan-btn">Nuevo plan</button>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table" id="plans-table">
+              <thead>
+                <tr>
+                  <th>Slug</th>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Visibilidad</th>
+                  <th>Precio/mes</th>
+                  <th>Túneles</th>
+                  <th>Subdominios</th>
+                  <th>Custom</th>
+                  <th>Activo</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="ws-panel" id="panel-coupons" data-route="coupons"></section>
+
+        <section class="ws-panel" id="panel-subscriptions" data-route="subscriptions">
+          <div class="ws-page-header">
+            <div>
+              <h1>Suscripciones</h1>
+              <p>Historial de pagos y asignaciones de plan (públicos y privados).</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="refresh-subscriptions">Actualizar</button>
+          </div>
+          <div class="ws-table-toolbar">
+            <div class="ws-table-filters">
+              <input type="search" id="subscriptions-search" class="admin-search" placeholder="Buscar email, plan, referencia…">
+              <select id="subscriptions-status-filter" class="admin-select">
+                <option value="">Todos los estados</option>
+                <option value="active">active</option>
+                <option value="pending">pending</option>
+                <option value="cancelled">cancelled</option>
+              </select>
+            </div>
+          </div>
+          <p id="subscriptions-meta" class="admin-subtitle"></p>
+          <div class="table-wrap">
+            <table class="admin-table" id="subscriptions-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Usuario</th>
+                  <th>Plan</th>
+                  <th>Estado</th>
+                  <th>Ciclo</th>
+                  <th>Monto</th>
+                  <th>Referencia</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="ws-pagination" id="subscriptions-pagination"></div>
+        </section>
+
+        <section class="ws-panel" id="panel-tunnels" data-route="tunnels">
+          <div class="ws-page-header">
+            <div>
+              <h1>Túneles activos</h1>
+              <p>Conexiones en tiempo real al gateway.</p>
+            </div>
+            <div class="admin-toolbar-actions">
+              <input type="search" id="tunnels-search" class="admin-search" placeholder="Buscar subdominio o email…">
+              <button type="button" class="btn btn-ghost btn-sm" id="refresh-tunnels">Actualizar</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table" id="tunnels-table">
+              <thead>
+                <tr>
+                  <th>Subdominio</th>
+                  <th>Puerto</th>
+                  <th>Usuario</th>
+                  <th>IP</th>
+                  <th>Heartbeat</th>
+                  <th>Creado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="ws-panel" id="panel-anonymous" data-route="anonymous">
+          <div class="ws-page-header">
+            <div>
+              <h1>Túneles anónimos</h1>
+              <p>Agrupados por dirección IP del cliente.</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="refresh-anonymous">Actualizar</button>
+          </div>
+          <p id="anonymous-meta" class="admin-subtitle"></p>
+          <div class="table-wrap">
+            <table class="admin-table" id="anonymous-table">
+              <thead>
+                <tr>
+                  <th>IP cliente</th>
+                  <th>Subdominio</th>
+                  <th>Puerto</th>
+                  <th>Heartbeat</th>
+                  <th>Creado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="ws-panel" id="panel-subdomains" data-route="subdomains">
+          <div class="ws-page-header">
+            <div>
+              <h1>Subdominios reservados</h1>
+              <p>Nombres asignados a usuarios registrados.</p>
+            </div>
+            <div class="admin-toolbar-actions">
+              <input type="search" id="subdomains-search" class="admin-search" placeholder="Buscar…">
+              <button type="button" class="btn btn-ghost btn-sm" id="refresh-subdomains">Actualizar</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table" id="subdomains-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Propietario</th>
+                  <th>Túnel activo</th>
+                  <th>Reservado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="ws-panel" id="panel-traces" data-route="traces">
+          <div class="ws-page-header">
+            <div>
+              <h1>Trazas HTTP</h1>
+              <p>Trazabilidad de solicitudes que pasan por los túneles (toda la plataforma).</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="export-traces-btn">Exportar CSV</button>
+          </div>
+          <div class="ws-table-toolbar">
+            <div class="ws-table-filters">
+              <input type="search" id="traces-search" class="admin-search" placeholder="Buscar ruta, subdominio, IP…">
+              <input type="text" id="traces-subdomain-filter" class="admin-search" placeholder="Subdominio">
+              <select id="traces-status-filter" class="admin-select">
+                <option value="">Cualquier estado</option>
+                <option value="200">200</option>
+                <option value="201">201</option>
+                <option value="301">301</option>
+                <option value="302">302</option>
+                <option value="400">400</option>
+                <option value="401">401</option>
+                <option value="403">403</option>
+                <option value="404">404</option>
+                <option value="500">500</option>
+                <option value="502">502</option>
+                <option value="504">504</option>
+              </select>
+              <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;white-space:nowrap">
+                <input type="checkbox" id="traces-live-toggle" checked>
+                En vivo
+              </label>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="refresh-traces">Actualizar</button>
+          </div>
+          <p id="traces-meta" class="admin-subtitle"></p>
+          <div class="table-wrap">
+            <table class="admin-table admin-table-logs" id="traces-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Método</th>
+                  <th>Ruta</th>
+                  <th>Estado</th>
+                  <th>Duración</th>
+                  <th>Subdominio</th>
+                  <th>Usuario</th>
+                  <th>IP cliente</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="ws-pagination" id="traces-pagination"></div>
+        </section>
+
+        <section class="ws-panel" id="panel-security" data-route="security">
+          <div class="ws-page-header">
+            <div>
+              <h1>Auditoría de seguridad</h1>
+              <p>IPs, dispositivos, amenazas detectadas y políticas de acceso.</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="security-refresh">Actualizar</button>
+          </div>
+          <nav class="ws-sec-tabs" id="security-tabs" aria-label="Secciones de seguridad">
+            <button type="button" class="ws-sec-tab active" data-sec-tab="audit">Auditoría</button>
+            <button type="button" class="ws-sec-tab" data-sec-tab="blacklist">Lista negra</button>
+            <button type="button" class="ws-sec-tab" data-sec-tab="whitelist">Lista blanca</button>
+            <button type="button" class="ws-sec-tab" data-sec-tab="threats">Amenazas</button>
+            <button type="button" class="ws-sec-tab" data-sec-tab="devices">Dispositivos</button>
+            <button type="button" class="ws-sec-tab" data-sec-tab="tutorials">Tutoriales</button>
+          </nav>
+          <div id="security-tab-audit" class="ws-sec-pane active"></div>
+          <div id="security-tab-blacklist" class="ws-sec-pane" hidden></div>
+          <div id="security-tab-whitelist" class="ws-sec-pane" hidden></div>
+          <div id="security-tab-threats" class="ws-sec-pane" hidden></div>
+          <div id="security-tab-devices" class="ws-sec-pane" hidden></div>
+          <div id="security-tab-tutorials" class="ws-sec-pane" hidden></div>
+        </section>
+
+        <section class="ws-panel" id="panel-workspace" data-route="workspace">
+          <div class="ws-page-header">
+            <div>
+              <h1>Workspace dtunnel</h1>
+              <p>IDE web para proyectos que usan dtunnel — plantillas, terminal simulada y despliegue local.</p>
+            </div>
+            <div class="ws-quick-actions">
+              <button type="button" class="btn btn-ghost btn-sm" id="ws-new-project">Nuevo proyecto</button>
+              <button type="button" class="btn btn-primary btn-sm" id="ws-run-tunnel">Ejecutar dtunnel</button>
+            </div>
+          </div>
+          <div class="ws-ide-shell" id="ws-ide-shell">
+            <aside class="ws-ide-sidebar" id="ws-ide-files"></aside>
+            <div class="ws-ide-main">
+              <div class="ws-ide-tabs" id="ws-ide-tabs"></div>
+              <div class="ws-ide-editor" id="ws-ide-editor"></div>
+              <div class="ws-ide-terminal-wrap">
+                <div class="ws-ide-terminal-header">Terminal dtunnel</div>
+                <div class="ws-ide-terminal" id="ws-ide-terminal"></div>
+                <form class="ws-ide-terminal-input" id="ws-ide-terminal-form">
+                  <span class="ws-ide-prompt">$</span>
+                  <input type="text" id="ws-ide-terminal-cmd" autocomplete="off" spellcheck="false" placeholder="dtunnel --port 3000">
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="ws-panel" id="panel-logs" data-route="logs">
+          <div class="ws-page-header">
+            <div>
+              <h1>Auditoría</h1>
+              <p>Registro de acciones administrativas y del sistema.</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="export-logs-btn">Exportar CSV</button>
+          </div>
+          <div class="ws-table-toolbar">
+            <div class="ws-table-filters">
+              <input type="search" id="logs-search" class="admin-search" placeholder="Buscar email, acción…">
+              <select id="logs-action-filter" class="admin-select">
+                <option value="">Todas las acciones</option>
+                <option value="user.create">user.create</option>
+                <option value="tunnel.open">tunnel.open</option>
+                <option value="tunnel.close">tunnel.close</option>
+                <option value="tunnel.close_anon_ip">tunnel.close_anon_ip</option>
+                <option value="user.suspend">user.suspend</option>
+                <option value="user.send_activation">user.send_activation</option>
+                <option value="user.send_password_reset">user.send_password_reset</option>
+                <option value="user.update">user.update</option>
+                <option value="user.delete">user.delete</option>
+                <option value="settings.update">settings.update</option>
+                <option value="subdomain.release">subdomain.release</option>
+                <option value="maintenance.purge_stale">maintenance.purge_stale</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="refresh-logs">Actualizar</button>
+          </div>
+          <p id="logs-meta" class="admin-subtitle"></p>
+          <div class="table-wrap">
+            <table class="admin-table admin-table-logs" id="logs-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Acción</th>
+                  <th>Actor</th>
+                  <th>Objetivo</th>
+                  <th>IP</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="ws-pagination" id="logs-pagination"></div>
+        </section>
+
+        <section class="ws-panel" id="panel-roles" data-route="roles"></section>
+
+        <section class="ws-panel" id="panel-settings" data-route="settings">
+          <div class="ws-page-header">
+            <div>
+              <h1>Ajustes</h1>
+              <p>Parámetros globales y mantenimiento.</p>
+            </div>
+          </div>
+          <div class="ws-grid-2">
+            <div class="ws-card">
+              <h3>Parámetros del servicio</h3>
+              <form id="settings-form" class="admin-form">
+                <div class="form-group">
+                  <label for="anon-limit">Límite de túneles anónimos por IP</label>
+                  <input type="number" id="anon-limit" min="0" max="100" required>
+                </div>
+                <div class="form-group">
+                  <label for="heartbeat-timeout">Timeout heartbeat (minutos)</label>
+                  <input type="number" id="heartbeat-timeout" min="1" max="120" required>
+                </div>
+                <div class="form-group">
+                  <label for="stale-hours">Purga túneles huérfanos (horas)</label>
+                  <input type="number" id="stale-hours" min="1" max="168" required>
+                </div>
+                <p id="settings-msg" class="form-error" hidden></p>
+                <button type="submit" class="btn btn-primary">Guardar ajustes</button>
+              </form>
+            </div>
+            <div class="ws-card">
+              <h3>Mantenimiento</h3>
+              <p class="admin-subtitle" style="margin-bottom:1rem">Operaciones de limpieza en la base de datos.</p>
+              <div class="admin-maintenance">
+                <button type="button" class="btn btn-outlined" id="purge-stale-btn">Purgar túneles obsoletos</button>
+                <button type="button" class="btn btn-outlined" id="purge-logs-btn">Purgar auditoría &gt; 30 días</button>
+                <button type="button" class="btn btn-outlined" id="purge-traces-btn">Purgar trazas HTTP &gt; 14 días</button>
+              </div>
+              <p id="maintenance-msg" class="admin-subtitle" style="margin-top:1rem"></p>
+            </div>
+            <div class="ws-card">
+              <h3>Autenticación en dos pasos (2FA)</h3>
+              <p id="twofa-status" class="admin-subtitle"></p>
+              <div id="twofa-actions" class="ws-quick-actions" style="margin-top:1rem"></div>
+              <div id="twofa-setup" hidden>
+                <p class="admin-subtitle">Escanea el QR con Google Authenticator, 1Password, etc.</p>
+                <img id="twofa-qr" alt="QR 2FA" style="margin:1rem 0;border-radius:8px;background:#fff;padding:8px">
+                <p class="admin-subtitle">Clave manual: <code id="twofa-secret"></code></p>
+                <div class="form-group">
+                  <label for="twofa-enable-code">Código de verificación</label>
+                  <input type="text" id="twofa-enable-code" inputmode="numeric" maxlength="8">
+                </div>
+                <button type="button" class="btn btn-primary" id="twofa-enable-btn">Activar 2FA</button>
+                <p id="twofa-backup-codes" class="admin-subtitle" hidden style="margin-top:1rem"></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
+  </div>
 
-    <nav class="admin-tabs" id="admin-tabs">
-      <button type="button" class="admin-tab active" data-tab="overview">Resumen</button>
-      <button type="button" class="admin-tab" data-tab="users">Usuarios</button>
-      <button type="button" class="admin-tab" data-tab="plans">Planes</button>
-      <button type="button" class="admin-tab" data-tab="tunnels">Túneles activos</button>
-      <button type="button" class="admin-tab" data-tab="anonymous">Anónimos por IP</button>
-      <button type="button" class="admin-tab" data-tab="subdomains">Subdominios</button>
-      <button type="button" class="admin-tab" data-tab="logs">Logs</button>
-      <button type="button" class="admin-tab" data-tab="settings">Ajustes</button>
-    </nav>
-
-    <section class="admin-panel active" id="panel-overview">
-      <div class="admin-stats" id="stats-grid"></div>
-    </section>
-
-    <section class="admin-panel" id="panel-users">
-      <div class="admin-toolbar">
-        <h2>Usuarios</h2>
-        <button type="button" class="btn btn-ghost btn-sm" id="refresh-users">Actualizar</button>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table" id="users-table">
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Plan</th>
-              <th>Estado</th>
-              <th>Verificado</th>
-              <th>Túneles</th>
-              <th>Subdominios</th>
-              <th>Admin</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="admin-panel" id="panel-plans">
-      <div class="admin-toolbar">
-        <h2>Planes y precios</h2>
-        <button type="button" class="btn btn-primary" id="new-plan-btn">Nuevo plan</button>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table" id="plans-table">
-          <thead>
-            <tr>
-              <th>Slug</th>
-              <th>Nombre</th>
-              <th>Precio/mes</th>
-              <th>Túneles</th>
-              <th>Subdominios</th>
-              <th>Custom</th>
-              <th>Activo</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="admin-panel" id="panel-tunnels">
-      <div class="admin-toolbar">
-        <h2>Túneles activos</h2>
-        <button type="button" class="btn btn-ghost btn-sm" id="refresh-tunnels">Actualizar</button>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table" id="tunnels-table">
-          <thead>
-            <tr>
-              <th>Subdominio</th>
-              <th>Puerto</th>
-              <th>Usuario</th>
-              <th>IP</th>
-              <th>Heartbeat</th>
-              <th>Creado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="admin-panel" id="panel-anonymous">
-      <div class="admin-toolbar">
-        <h2>Túneles anónimos por IP</h2>
-        <button type="button" class="btn btn-ghost btn-sm" id="refresh-anonymous">Actualizar</button>
-      </div>
-      <p id="anonymous-meta" class="admin-subtitle"></p>
-      <div class="table-wrap">
-        <table class="admin-table" id="anonymous-table">
-          <thead>
-            <tr>
-              <th>IP cliente</th>
-              <th>Subdominio</th>
-              <th>Puerto</th>
-              <th>Heartbeat</th>
-              <th>Creado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="admin-panel" id="panel-subdomains">
-      <div class="admin-toolbar">
-        <h2>Subdominios reservados</h2>
-        <button type="button" class="btn btn-ghost btn-sm" id="refresh-subdomains">Actualizar</button>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table" id="subdomains-table">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Propietario</th>
-              <th>Túnel activo</th>
-              <th>Reservado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="admin-panel" id="panel-logs">
-      <div class="admin-toolbar">
-        <h2>Registro de actividad</h2>
-        <div class="admin-toolbar-actions">
-          <input type="search" id="logs-search" class="admin-search" placeholder="Buscar email, acción…">
-          <select id="logs-action-filter" class="admin-select">
-            <option value="">Todas las acciones</option>
-            <option value="tunnel.open">tunnel.open</option>
-            <option value="tunnel.close">tunnel.close</option>
-            <option value="tunnel.close_anon_ip">tunnel.close_anon_ip</option>
-            <option value="user.suspend">user.suspend</option>
-            <option value="user.send_activation">user.send_activation</option>
-            <option value="user.send_password_reset">user.send_password_reset</option>
-            <option value="user.update">user.update</option>
-            <option value="user.delete">user.delete</option>
-            <option value="settings.update">settings.update</option>
-            <option value="subdomain.release">subdomain.release</option>
-            <option value="maintenance.purge_stale">maintenance.purge_stale</option>
-          </select>
-          <button type="button" class="btn btn-ghost btn-sm" id="refresh-logs">Actualizar</button>
-        </div>
-      </div>
-      <p id="logs-meta" class="admin-subtitle"></p>
-      <div class="table-wrap">
-        <table class="admin-table admin-table-logs" id="logs-table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Acción</th>
-              <th>Actor</th>
-              <th>Objetivo</th>
-              <th>IP</th>
-              <th>Detalle</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="admin-panel" id="panel-settings">
-      <h2>Ajustes globales</h2>
-      <form id="settings-form" class="admin-form">
-        <div class="form-group">
-          <label for="anon-limit">Límite de túneles anónimos</label>
-          <input type="number" id="anon-limit" min="0" max="100" required>
-        </div>
-        <div class="form-group">
-          <label for="heartbeat-timeout">Timeout heartbeat (minutos)</label>
-          <input type="number" id="heartbeat-timeout" min="1" max="120" required>
-        </div>
-        <div class="form-group">
-          <label for="stale-hours">Purga túneles huérfanos (horas)</label>
-          <input type="number" id="stale-hours" min="1" max="168" required>
-        </div>
-        <p id="settings-msg" class="form-error" hidden></p>
-        <button type="submit" class="btn btn-primary">Guardar ajustes</button>
-      </form>
-      <h3 class="admin-section-title">Mantenimiento</h3>
-      <div class="admin-maintenance">
-        <button type="button" class="btn btn-outlined" id="purge-stale-btn">Purgar túneles obsoletos</button>
-        <button type="button" class="btn btn-outlined" id="purge-logs-btn">Purgar logs &gt; 30 días</button>
-      </div>
-      <p id="maintenance-msg" class="admin-subtitle"></p>
-    </section>
-  </main>
+  <div class="ws-toast-container" id="toast-container" aria-live="polite"></div>
 
   <dialog id="user-dialog" class="admin-dialog">
     <form method="dialog" id="user-form">
@@ -247,11 +522,55 @@
       </div>
       <label class="admin-check"><input type="checkbox" id="edit-user-active"> Cuenta activa</label>
       <label class="admin-check"><input type="checkbox" id="edit-user-verified"> Email verificado</label>
-      <label class="admin-check"><input type="checkbox" id="edit-user-admin"> Administrador</label>
+      <label class="admin-check"><input type="checkbox" id="edit-user-admin"> Administrador (legacy)</label>
+      <label class="admin-check"><input type="checkbox" id="edit-user-comp-sub"> Registrar suscripción de cortesía al cambiar plan</label>
+      <div class="form-group" style="margin-top:0.75rem">
+        <label>Acceso a planes privados</label>
+        <div id="edit-user-plan-grants" class="permission-grid" style="max-height:120px;margin-bottom:0.5rem"></div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-group" style="flex:1;min-width:10rem;margin:0">
+            <label for="grant-plan-slug">Conceder plan privado</label>
+            <select id="grant-plan-slug"></select>
+          </div>
+          <button type="button" class="btn btn-outlined btn-sm" id="grant-plan-btn">Conceder acceso</button>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:0.75rem">
+        <label>Roles RBAC del sistema</label>
+        <p class="admin-subtitle" style="margin:0.25rem 0 0.5rem;font-size:0.8rem">Complementan o reemplazan permisos del flag administrador.</p>
+        <div id="edit-user-roles" class="permission-grid"></div>
+      </div>
       <p id="user-form-msg" class="form-error" hidden></p>
       <div class="dialog-actions">
         <button type="button" class="btn btn-ghost" id="user-cancel">Cancelar</button>
         <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="create-user-dialog" class="admin-dialog">
+    <form method="dialog" id="create-user-form">
+      <h3>Crear usuario</h3>
+      <div class="form-group">
+        <label for="create-user-email">Email</label>
+        <input type="email" id="create-user-email" required autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="create-user-password">Contraseña (mín. 8 caracteres)</label>
+        <input type="password" id="create-user-password" minlength="8" required autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="create-user-plan">Plan</label>
+        <select id="create-user-plan"></select>
+      </div>
+      <label class="admin-check"><input type="checkbox" id="create-user-active" checked> Cuenta activa</label>
+      <label class="admin-check"><input type="checkbox" id="create-user-verified"> Email verificado</label>
+      <label class="admin-check"><input type="checkbox" id="create-user-admin"> Administrador</label>
+      <label class="admin-check"><input type="checkbox" id="create-user-send-activation"> Enviar correo de activación</label>
+      <p id="create-user-msg" class="form-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="create-user-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Crear</button>
       </div>
     </form>
   </dialog>
@@ -292,6 +611,41 @@
       </div>
       <label class="admin-check"><input type="checkbox" id="edit-plan-custom-subdomain"> Subdominio personalizado</label>
       <label class="admin-check"><input type="checkbox" id="edit-plan-active"> Plan activo</label>
+      <div class="admin-form-grid">
+        <div class="form-group">
+          <label for="edit-plan-type">Tipo de plan</label>
+          <select id="edit-plan-type">
+            <option value="personal">Personal</option>
+            <option value="enterprise">Empresarial</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="edit-plan-visibility">Visibilidad</label>
+          <select id="edit-plan-visibility">
+            <option value="public">Público (landing y autoservicio)</option>
+            <option value="private">Privado (solo con acceso concedido)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="edit-plan-max-seats">Asientos (empresa)</label>
+          <input type="number" id="edit-plan-max-seats" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label for="edit-plan-currency">Moneda</label>
+          <select id="edit-plan-currency">
+            <option value="USD">USD</option>
+            <option value="COP">COP</option>
+          </select>
+        </div>
+      </div>
+      <h4 class="admin-section-title">Funciones del plan</h4>
+      <label class="admin-check"><input type="checkbox" id="edit-plan-feature-cname"> Dominio CNAME personalizado</label>
+      <div class="form-group">
+        <label for="edit-plan-feature-cname-limit">Límite dominios CNAME</label>
+        <input type="number" id="edit-plan-feature-cname-limit" min="0" value="0">
+      </div>
+      <label class="admin-check"><input type="checkbox" id="edit-plan-feature-api"> Acceso API</label>
+      <label class="admin-check"><input type="checkbox" id="edit-plan-feature-support"> Soporte prioritario</label>
       <p id="plan-form-msg" class="form-error" hidden></p>
       <div class="dialog-actions">
         <button type="button" class="btn btn-ghost" id="plan-cancel">Cancelar</button>
@@ -300,7 +654,96 @@
     </form>
   </dialog>
 
+  <dialog id="role-dialog" class="admin-dialog admin-dialog-wide">
+    <form method="dialog" id="role-form">
+      <h3 id="role-dialog-title">Rol</h3>
+      <input type="hidden" id="edit-role-mode" value="create">
+      <div class="admin-form-grid">
+        <div class="form-group">
+          <label for="edit-role-slug">Slug</label>
+          <input type="text" id="edit-role-slug" pattern="[a-z0-9_]+" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="edit-role-name">Nombre</label>
+          <input type="text" id="edit-role-name" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-role-scope">Ámbito</label>
+          <select id="edit-role-scope" required>
+            <option value="system">Sistema</option>
+            <option value="organization">Organización</option>
+          </select>
+        </div>
+      </div>
+      <p id="role-system-note" class="admin-subtitle" hidden style="margin:0.5rem 0">Rol del sistema: no se puede eliminar ni cambiar slug/ámbito. Los permisos sí se pueden ajustar.</p>
+      <h4 class="admin-section-title">Permisos</h4>
+      <div id="role-permissions-grid" class="permission-grid"></div>
+      <p id="role-form-msg" class="form-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="role-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="role-view-dialog" class="admin-dialog admin-dialog-wide">
+    <h3 id="role-view-title">Detalle del rol</h3>
+    <p id="role-view-meta" class="admin-subtitle"></p>
+    <h4 class="admin-section-title">Permisos asignados</h4>
+    <div id="role-view-permissions" class="role-permissions-preview"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-primary" id="role-view-close">Cerrar</button>
+    </div>
+  </dialog>
+
+  <dialog id="coupon-dialog" class="admin-dialog">
+    <form method="dialog" id="coupon-form">
+      <h3 id="coupon-dialog-title">Cupón</h3>
+      <input type="hidden" id="edit-coupon-id">
+      <div class="form-group">
+        <label for="edit-coupon-code">Código</label>
+        <input type="text" id="edit-coupon-code" required autocomplete="off" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label for="edit-coupon-description">Descripción</label>
+        <input type="text" id="edit-coupon-description">
+      </div>
+      <div class="admin-form-grid">
+        <div class="form-group">
+          <label for="edit-coupon-type">Tipo</label>
+          <select id="edit-coupon-type">
+            <option value="percent">Porcentaje (%)</option>
+            <option value="fixed">Monto fijo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="edit-coupon-value">Valor</label>
+          <input type="number" id="edit-coupon-value" min="0" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-coupon-max-uses">Usos máximos (vacío = ilimitado)</label>
+          <input type="number" id="edit-coupon-max-uses" min="1" placeholder="—">
+        </div>
+        <div class="form-group">
+          <label for="edit-coupon-valid-until">Válido hasta</label>
+          <input type="datetime-local" id="edit-coupon-valid-until">
+        </div>
+      </div>
+      <label class="admin-check"><input type="checkbox" id="edit-coupon-active" checked> Activo</label>
+      <p id="coupon-form-msg" class="form-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="coupon-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <button type="button" class="theme-fab" id="theme-toggle" aria-label="Cambiar tema">
+    <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+  </button>
+
   <script type="module" src="/js/admin.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>

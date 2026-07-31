@@ -28,12 +28,13 @@
       <a href="#arquitectura">Arquitectura</a>
       <a href="#seguridad">Seguridad</a>
       <a href="/docs.html">Documentación</a>
+      <a href="/planes.html">Planes</a>
       <a href="/changelog.html">Changelog</a>
       <a href="/status.html">Estado</a>
       <a href="#ayuda">Ayuda</a>
       <a href="https://github.com/desarrollado-com/dtunnel" target="_blank" rel="noopener">GitHub</a>
       <a href="#precios">Precios</a>
-      <div class="nav-actions">
+      <div class="nav-actions" data-auth-nav>
         <a href="/register.html" class="btn btn-outlined">Registrarse</a>
         <a href="/login.html" class="btn btn-primary">Iniciar sesión</a>
       </div>
@@ -284,26 +285,13 @@ dtunnel --port 88080</code></pre>
 
     <section id="precios" class="section pricing">
       <h2>Precios</h2>
-      <div class="grid pricing-grid">
-        <article class="card">
-          <h3>Gratis</h3>
-          <p class="price">$0</p>
-          <ul>
-            <li>URL aleatoria</li>
-            <li>1 túnel simultáneo</li>
-            <li>HTTP + HTTPS</li>
-          </ul>
-        </article>
-        <article class="card card-featured">
-          <h3>Registrado</h3>
-          <p class="price">Gratis</p>
-          <ul>
-            <li>Subdominio persistente</li>
-            <li>Hasta 5 túneles</li>
-            <li>Reserva de nombres</li>
-          </ul>
-          <a href="/register.html" class="btn btn-primary">Crear cuenta</a>
-        </article>
+      <p class="section-intro">
+        Planes para desarrolladores. Servicio experimental sin garantías — ver
+        <a href="/terminos.html">términos</a>.
+        <a href="/planes.html">Comparativa completa de características →</a>
+      </p>
+      <div class="grid pricing-grid" id="pricing-grid">
+        <p class="text-muted">Cargando planes…</p>
       </div>
     </section>
 
@@ -325,8 +313,10 @@ dtunnel --port 88080</code></pre>
 
   <footer class="footer" data-site-footer></footer>
   <script src="/js/main.js"></script>
+  <script src="/js/plans.js"></script>
   <script src="/js/mermaid-init.js" type="module"></script>
   <script src="/js/site-footer.js"></script>
+  <script src="/js/nav-auth.js"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>

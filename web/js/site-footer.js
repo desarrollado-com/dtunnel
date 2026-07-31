@@ -7,9 +7,11 @@
         <a href="https://github.com/desarrollado-com/dtunnel" target="_blank" rel="noopener">GitHub</a> ·
         <a href="/changelog.html">Changelog</a> ·
         <a href="/status.html">Estado</a> ·
+        <a href="/planes.html">Planes</a> ·
         <a href="/terminos.html">Términos</a> ·
         <a href="/privacidad.html">Privacidad</a> ·
         <a href="/uso-aceptable.html">Uso aceptable</a>
-      </p>`;
+      </p>
+      <p class="text-muted" style="margin-top:0.5rem;font-size:0.8rem">Servicio experimental para desarrolladores · sin garantías</p>`;
   });
 })();

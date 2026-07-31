@@ -10,8 +10,15 @@ import paramiko
 
 ROOT = Path(__file__).resolve().parent.parent
 SECRETS = ROOT.parent.parent / "secretos" / ".env.dtunnel"
+VERSION_FILE = ROOT / "VERSION"
 REMOTE_OPT = "/opt/dtunnel/api"
 DOMAIN = "dtunnel.desarrollado.com"
+
+
+def read_platform_version() -> str:
+    if VERSION_FILE.is_file():
+        return VERSION_FILE.read_text(encoding="utf-8").strip()
+    return "2.2.0"
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -27,16 +34,12 @@ def load_env(path: Path) -> dict[str, str]:
 
 def build_api_env(cfg: dict[str, str], jwt_secret: str) -> str:
     domain = cfg.get("DTUNNEL_DOMAIN", DOMAIN)
-    token = cfg["DTUNNEL_TOKEN"]
     admin_emails = cfg.get("ADMIN_EMAILS", "")
     app_url = f"https://{domain}"
     cors = f"https://{domain},https://dtunnel-admin.desarrollado.com"
     lines = [
         "PORT=3001",
         f"JWT_SECRET={jwt_secret}",
-        f"FRPS_TOKEN={token}",
-        f"FRPS_SERVER={domain}",
-        "FRPS_PORT=7000",
         f"DOMAIN={domain}",
         "ANON_TUNNEL_LIMIT=1",
         "HEARTBEAT_TIMEOUT_MIN=10",
@@ -45,8 +48,7 @@ def build_api_env(cfg: dict[str, str], jwt_secret: str) -> str:
         f"ADMIN_EMAILS={admin_emails}",
         f"APP_URL={app_url}",
         f"CORS_ORIGINS={cors}",
-        "API_VERSION=2.1.0",
-        "TUNNEL_TRANSPORT=native",
+        f"API_VERSION={read_platform_version()}",
         "TUNNEL_HTTP_PORT=18080",
     ]
     for key in ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_NAME"):
@@ -125,8 +127,8 @@ def main() -> int:
     api_env = build_api_env(cfg, jwt_secret)
     upload_api(client)
     upload_text(client, f"{REMOTE_OPT}/.env", api_env)
-    # frps ocupa :18080; el gateway nativo v2 necesita ese puerto en el host.
     run(client, "docker stop dtunnel_frps 2>/dev/null || true", timeout=30)
+    run(client, "docker rm dtunnel_frps 2>/dev/null || true", timeout=30)
     run(client, f"cd {REMOTE_OPT} && docker compose build && docker compose up -d")
     import time
     for attempt in range(1, 6):

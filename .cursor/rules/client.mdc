@@ -1,13 +1,11 @@
 ---
-description: Convenciones del cliente frpc y dtunnel.sh
-globs: client/**/*
+description: Convenciones del CLI dtunnel
+globs: client/**
 alwaysApply: false
 ---
 
-# Client (frpc)
+# Client (CLI dtunnel)
 
-- CLI: `./dtunnel.sh up <subdomain> <port>` → `https://<subdomain>.dtunnel.desarrollado.com`
-- Requiere `DTUNNEL_TOKEN` (mismo que `FRPS_TOKEN` del servidor).
-- `frpc.toml` generado en runtime — no commitear.
-- Validar que `frpc` esté en PATH; mensaje claro si falta.
-- `localIP` por defecto `127.0.0.1`; configurable con `--host`, `DTUNNEL_LOCAL_HOST` o `localHost` en `~/.dtunnel/config.json`.
+- Túnel nativo: `native-client.js` + WebSocket a `/tunnel/ws`.
+- Config en `~/.dtunnel/config.json` — no commitear tokens.
+- Requiere Node.js 18+.

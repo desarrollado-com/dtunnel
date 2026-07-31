@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { createServer } from 'http';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { randomBytes } from 'crypto';
 import {
   createUser,
@@ -40,9 +43,22 @@ import {
   getAdminStats,
   getInactiveSubdomainStatus,
   deleteTunnel,
+  getTotpState,
 } from './db.js';
 import { appendAuditLog } from './audit.js';
 import { createAdminRouter } from './routes/admin.js';
+import { createBillingRouter } from './routes/billing.js';
+import { getActiveSubscription, listSubscriptionsForSubscriber, publicSubscription } from './billing/store.js';
+import { createOrgsRouter } from './routes/orgs.js';
+import { createCustomDomainsRouter } from './routes/custom-domains.js';
+import { create2faRouter } from './routes/auth-2fa.js';
+import { startAdminMetricsWs } from './admin/metrics-ws.js';
+import { startAdminConsoleWs } from './admin/console-ws.js';
+import { createRequestLogsRouter } from './routes/request-logs.js';
+import { createSupportRouter } from './routes/support.js';
+import { createCommunityRouter } from './routes/community.js';
+import { startRequestTraceWs } from './request-trace-ws.js';
+import { sign2faChallenge, signImpersonationToken, signSessionToken } from './auth-tokens.js';
 import { getClientIp } from './middleware/clientIp.js';
 import { registerLimiter, loginLimiter, tunnelCreateLimiter, forgotPasswordLimiter, resendVerificationLimiter } from './middleware/rateLimit.js';
 import { sendPasswordResetEmail, sendActivationEmail } from './mail.js';
@@ -51,6 +67,9 @@ import {
   startNativeTunnelServer,
   unregisterTunnel,
 } from './tunnel/native.js';
+import { createIpPolicyMiddleware, assertIpAllowed } from './security/ip-policy.js';
+import { parseClientMeta } from './security/fingerprint.js';
+import { touchDeviceFingerprint } from './security/store.js';
 
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS
   || 'https://dtunnel.desarrollado.com,https://dtunnel-admin.desarrollado.com')
@@ -59,18 +78,15 @@ const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS
   .filter(Boolean);
 const APP_URL = process.env.APP_URL || 'https://dtunnel.desarrollado.com';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version;
+
 const app = express();
 const PORT = process.env.PORT || 3001;
-const API_VERSION = process.env.API_VERSION || '2.1.0';
+const API_VERSION = process.env.API_VERSION || PKG_VERSION;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
-const FRPS_TOKEN = process.env.FRPS_TOKEN || '';
-const FRPS_SERVER = process.env.FRPS_SERVER || 'dtunnel.desarrollado.com';
-const FRPS_PORT = Number(process.env.FRPS_PORT || 7000);
-const TUNNEL_TRANSPORT = (process.env.TUNNEL_TRANSPORT || 'native').toLowerCase();
-const TUNNEL_HTTP_PORT = Number(process.env.TUNNEL_HTTP_PORT || 18080);
-const useNative = TUNNEL_TRANSPORT === 'native' || TUNNEL_TRANSPORT === 'both';
-const useFrp = TUNNEL_TRANSPORT === 'frp' || TUNNEL_TRANSPORT === 'both';
 const DOMAIN = process.env.DOMAIN || 'dtunnel.desarrollado.com';
+const TUNNEL_HTTP_PORT = Number(process.env.TUNNEL_HTTP_PORT || 18080);
 const ANON_LIMIT = Number(process.env.ANON_TUNNEL_LIMIT || 1);
 const HEARTBEAT_TIMEOUT_MIN = Number(process.env.HEARTBEAT_TIMEOUT_MIN || 10);
 const STALE_TUNNEL_HOURS = Number(process.env.STALE_TUNNEL_HOURS || 24);
@@ -97,6 +113,12 @@ setInterval(() => {
 app.set('trust proxy', 1);
 app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
+app.use(createIpPolicyMiddleware({ scope: 'api' }));
+
+function resolveIsAdmin(user) {
+  if (!user) return false;
+  return Boolean(user.is_admin) || ADMIN_EMAILS.includes(String(user.email || '').toLowerCase());
+}
 
 function authOptional(req, _res, next) {
   const header = req.headers.authorization || '';
@@ -104,15 +126,20 @@ function authOptional(req, _res, next) {
   if (!token) {
     req.user = null;
     req.dbUser = null;
+    req.impersonator = null;
     return next();
   }
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     req.user = payload;
     req.dbUser = findUserById(payload.userId);
+    req.impersonator = payload.imp
+      ? { userId: payload.impBy, email: payload.impByEmail }
+      : null;
   } catch {
     req.user = null;
     req.dbUser = null;
+    req.impersonator = null;
   }
   next();
 }
@@ -135,9 +162,12 @@ function authRequired(req, res, next) {
 }
 
 function adminRequired(req, res, next) {
-  const isAdmin = Boolean(req.dbUser?.is_admin)
-    || ADMIN_EMAILS.includes(String(req.user?.email || '').toLowerCase());
-  if (!isAdmin) return res.status(403).json({ error: 'Acceso de administrador requerido' });
+  if (req.user?.imp) {
+    return res.status(403).json({ error: 'Acción no permitida durante impersonación', code: 'IMPERSONATING' });
+  }
+  if (!resolveIsAdmin(req.dbUser)) {
+    return res.status(403).json({ error: 'Acceso de administrador requerido' });
+  }
   next();
 }
 
@@ -183,7 +213,7 @@ app.get('/status', (_req, res) => {
 });
 
 app.get('/plans', (_req, res) => {
-  res.json({ plans: listPlans().map(publicPlan) });
+  res.json({ plans: listPlans(false, { publicOnly: true }).map(publicPlan) });
 });
 
 app.post('/auth/register', registerLimiter, async (req, res) => {
@@ -230,7 +260,7 @@ app.post('/auth/login', loginLimiter, (req, res) => {
   if (!user.active) {
     return res.status(403).json({ error: 'Cuenta desactivada' });
   }
-  const isAdmin = Boolean(user.is_admin) || ADMIN_EMAILS.includes(user.email.toLowerCase());
+  const isAdmin = resolveIsAdmin(user);
   if (!user.email_verified && !isAdmin) {
     return res.status(403).json({
       error: 'Debes verificar tu email antes de iniciar sesión',
@@ -238,7 +268,16 @@ app.post('/auth/login', loginLimiter, (req, res) => {
       email: user.email,
     });
   }
-  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+  if (user.totp_enabled) {
+    return res.json({
+      requires2fa: true,
+      tempToken: sign2faChallenge(user),
+      email: user.email,
+      isAdmin,
+      emailVerified: Boolean(user.email_verified),
+    });
+  }
+  const token = signSessionToken(user);
   res.json({
     token,
     email: user.email,
@@ -246,6 +285,8 @@ app.post('/auth/login', loginLimiter, (req, res) => {
     emailVerified: Boolean(user.email_verified),
   });
 });
+
+app.use('/auth/2fa', create2faRouter({ authRequired, loginLimiter, resolveIsAdmin }));
 
 app.post('/auth/forgot-password', forgotPasswordLimiter, async (req, res) => {
   const email = req.body?.email;
@@ -333,6 +374,9 @@ app.post('/auth/change-password', authRequired, loginLimiter, (req, res) => {
 app.get('/me', authRequired, (req, res) => {
   const subdomains = getUserSubdomains(req.user.userId);
   const limits = getUserLimits(req.dbUser, ANON_LIMIT);
+  const activeSub = getActiveSubscription('user', req.user.userId);
+  const subHistory = listSubscriptionsForSubscriber('user', req.user.userId, { limit: 5 })
+    .map(publicSubscription);
   res.json({
     ...publicUser(req.dbUser),
     subdomains: subdomains.map((s) => s.name),
@@ -340,7 +384,14 @@ app.get('/me', authRequired, (req, res) => {
       tunnelLimit: limits.tunnelLimit,
       reservedSubdomainLimit: limits.reservedSubdomainLimit,
       customSubdomain: limits.customSubdomain,
+      customCname: limits.customCname,
+      customCnameLimit: limits.customCnameLimit,
     },
+    subscription: activeSub ? publicSubscription(activeSub) : null,
+    subscriptionHistory: subHistory,
+    totp: getTotpState(req.dbUser),
+    impersonating: Boolean(req.user?.imp),
+    impersonator: req.impersonator,
   });
 });
 
@@ -382,18 +433,27 @@ app.get('/tunnels', authRequired, (req, res) => {
 });
 
 app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
-  if (useFrp && !FRPS_TOKEN) {
-    return res.status(503).json({ error: 'Servidor no configurado (FRPS_TOKEN)' });
-  }
-
   const port = Number(req.body?.port);
   if (!port || port < 1 || port > 65535) {
     return res.status(400).json({ error: 'Puerto inválido' });
   }
 
   const clientIp = getClientIp(req);
+  const clientMeta = parseClientMeta(req);
   const userId = req.user?.userId ?? null;
   const dbUser = userId ? req.dbUser || findUserById(userId) : null;
+
+  const ipBlock = assertIpAllowed(clientIp, 'tunnel');
+  if (ipBlock) {
+    return res.status(403).json({
+      error: 'IP bloqueada',
+      code: 'IP_BLACKLISTED',
+      reason: ipBlock.reason,
+      remediation: ipBlock.remediation,
+      expiresAt: ipBlock.expiresAt,
+    });
+  }
+
   if (userId && dbUser && !dbUser.active) {
     return res.status(403).json({ error: 'Cuenta desactivada' });
   }
@@ -457,7 +517,21 @@ app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
     return res.status(409).json({ error: 'Subdominio en uso' });
   }
 
-  const result = registerTunnel(userId, subdomain, port, userId == null ? clientIp : null);
+  const result = registerTunnel(userId, subdomain, port, {
+    clientIp,
+    userAgent: clientMeta.userAgent,
+    clientVersion: clientMeta.clientVersion,
+    fingerprintHash: clientMeta.fingerprintHash,
+  });
+
+  touchDeviceFingerprint({
+    fingerprintHash: clientMeta.fingerprintHash,
+    userId,
+    clientIp,
+    userAgent: clientMeta.userAgent,
+    clientVersion: clientMeta.clientVersion,
+    clientId: clientMeta.clientId,
+  });
 
   const urls = tunnelUrls(subdomain);
   const response = {
@@ -466,22 +540,13 @@ app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
     tunnelId: result.lastInsertRowid,
     persistent: Boolean(userId && req.body?.subdomain),
     heartbeatIntervalSec: 120,
-  };
-
-  if (useNative) {
-    response.transport = 'native';
-    response.wsUrl = `wss://${DOMAIN}/tunnel/ws`;
-    response.tunnelToken = createTunnelAccessToken(
+    transport: 'native',
+    wsUrl: `wss://${DOMAIN}/tunnel/ws`,
+    tunnelToken: createTunnelAccessToken(
       { subdomain, tunnelId: result.lastInsertRowid, port },
       JWT_SECRET,
-    );
-  }
-  if (useFrp) {
-    response.server = FRPS_SERVER;
-    response.serverPort = FRPS_PORT;
-    response.token = FRPS_TOKEN;
-    if (!useNative) response.transport = 'frp';
-  }
+    ),
+  };
 
   appendAuditLog({
     actorUserId: userId,
@@ -489,7 +554,13 @@ app.post('/tunnels', tunnelCreateLimiter, authOptional, (req, res) => {
     action: 'tunnel.open',
     targetType: 'tunnel',
     targetId: result.lastInsertRowid,
-    details: { subdomain, port, transport: response.transport },
+    details: {
+      subdomain,
+      port,
+      transport: response.transport,
+      fingerprintHash: clientMeta.fingerprintHash,
+      clientVersion: clientMeta.clientVersion,
+    },
     ip: clientIp,
   });
 
@@ -557,22 +628,51 @@ app.delete('/tunnels/:subdomain', authOptional, (req, res) => {
   }
 });
 
-app.use('/admin', createAdminRouter({ authRequired, adminRequired }));
+app.use('/admin', createAdminRouter({
+  authRequired,
+  adminRequired,
+  apiVersion: API_VERSION,
+  uptimeSeconds: () => process.uptime(),
+  resolveIsAdmin,
+}));
+app.use('/billing', createBillingRouter({ authRequired }));
+app.use('/orgs', createOrgsRouter({ authRequired }));
+app.use('/custom-domains', createCustomDomainsRouter({ authRequired }));
+app.use('/request-logs', createRequestLogsRouter({ authRequired }));
+app.use('/support', createSupportRouter({ authRequired }));
+app.use('/community', createCommunityRouter());
 
 const server = createServer(app);
 
-if (useNative) {
-  startNativeTunnelServer({
-    jwtSecret: JWT_SECRET,
-    domain: DOMAIN,
-    httpPort: TUNNEL_HTTP_PORT,
-    apiServer: server,
-    findTunnelBySubdomain,
-    getInactiveSubdomainStatus,
-    mainSite: APP_URL,
-  });
-}
+const metricsWs = startAdminMetricsWs({
+  apiServer: server,
+  jwtSecret: JWT_SECRET,
+  adminEmails: ADMIN_EMAILS,
+});
+
+const traceWs = startRequestTraceWs({
+  apiServer: server,
+  jwtSecret: JWT_SECRET,
+});
+
+const consoleWs = startAdminConsoleWs({
+  jwtSecret: JWT_SECRET,
+  adminEmails: ADMIN_EMAILS,
+});
+
+const upgradeHandlers = [metricsWs.handleUpgrade, traceWs.handleUpgrade, consoleWs.handleUpgrade];
+
+startNativeTunnelServer({
+  jwtSecret: JWT_SECRET,
+  domain: DOMAIN,
+  httpPort: TUNNEL_HTTP_PORT,
+  apiServer: server,
+  findTunnelBySubdomain,
+  getInactiveSubdomainStatus,
+  mainSite: APP_URL,
+  extraUpgradeHandlers: upgradeHandlers,
+});
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`dtunnel-api v${API_VERSION} en http://127.0.0.1:${PORT} (transport=${TUNNEL_TRANSPORT})`);
+  console.log(`dtunnel-api v${API_VERSION} en http://127.0.0.1:${PORT} (túnel nativo :${TUNNEL_HTTP_PORT})`);
 });

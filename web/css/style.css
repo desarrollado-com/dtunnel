@@ -1,4 +1,5 @@
 @import url('m3.css');
+@import url('workspace.css');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -431,6 +432,55 @@ md-outlined-text-field { width: 100%; }
 .docs-section h4 { margin: 1.25rem 0 0.5rem; font-size: 1rem; font-weight: 500; }
 .legal-page h2 { margin: 1.5rem 0 0.75rem; font-size: 1.15rem; font-weight: 500; }
 .legal-page p, .legal-page li { color: var(--md-sys-color-on-surface-variant); line-height: 1.6; }
+.legal-notice {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--md-sys-shape-corner-medium);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+/* Planes — comparativa */
+.plans-hero-lead { max-width: 62ch; margin-bottom: 1.5rem; }
+.plans-disclaimer {
+  margin: 0 0 2rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+  font-size: 0.9rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.plans-comparison-wrap { overflow-x: auto; margin: 2rem 0; }
+.plans-comparison {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.plans-comparison th,
+.plans-comparison td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  text-align: left;
+  vertical-align: top;
+}
+.plans-comparison th { font-weight: 500; background: var(--md-sys-color-surface-container-low); }
+.plans-comparison td:not(:first-child),
+.plans-comparison th:not(:first-child) { text-align: center; min-width: 120px; }
+.plans-comparison .plan-name { font-weight: 500; }
+.plans-comparison .plan-price { color: var(--md-sys-color-primary); font-size: 1.1rem; }
+.plans-yes { color: var(--md-sys-color-tertiary); }
+.plans-no { color: var(--md-sys-color-on-surface-variant); opacity: 0.55; }
+.plans-enterprise-cta {
+  margin-top: 2rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container);
+}
 .status-pill { display: inline-block; font-weight: 500; padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.9rem; }
 .status-ok { background: color-mix(in srgb, #2e7d32 20%, transparent); color: #81c784; }
 .status-down { background: color-mix(in srgb, #c62828 25%, transparent); color: #ef9a9a; }
@@ -462,6 +512,24 @@ md-outlined-text-field { width: 100%; }
 .badge-ok { background: color-mix(in srgb, var(--md-sys-color-tertiary) 20%, transparent); color: var(--md-sys-color-tertiary); }
 .badge-warn { background: color-mix(in srgb, var(--md-sys-color-error) 15%, transparent); color: var(--md-sys-color-error); }
 .badge-accent { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+
+.admin-select,
+.admin-search {
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  font-family: var(--font);
+  font-size: 0.875rem;
+}
+
+.log-details {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .admin-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
 .admin-dialog {
   margin: auto;

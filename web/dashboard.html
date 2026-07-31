@@ -10,233 +10,58 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
   <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
-  <script type="importmap">{"imports":{"@material/web/":"https://esm.run/@material/web/"}}</script>
-  <script type="module" src="/js/m3.js"></script>
 </head>
-<body>
-  <header class="top-app-bar">
-    <a href="/" class="logo"><span class="material-symbols-outlined filled">hub</span> dtunnel</a>
-    <nav class="nav">
-      <a href="/docs.html">Documentación</a>
-      <a href="#" id="logout">Cerrar sesión</a>
-    </nav>
-  </header>
-  <main class="section">
-    <h1>Mi cuenta</h1>
-    <p id="email" class="text-muted" style="margin-bottom:0.5rem"></p>
-    <p id="plan-info" class="text-muted" style="margin-bottom:2rem"></p>
-    <p id="admin-link" hidden style="margin-bottom:2rem">
-      <a href="https://dtunnel-admin.desarrollado.com/" class="btn btn-outlined" target="_blank" rel="noopener">Panel de administración</a>
-    </p>
+<body class="ws-body">
+  <div class="ws-shell">
+    <aside class="ws-sidebar" id="ws-sidebar">
+      <div class="ws-sidebar-brand">
+        <span class="material-symbols-outlined filled">hub</span>
+        <div>
+          <strong>dtunnel</strong>
+          <small>Mi cuenta</small>
+        </div>
+      </div>
+      <nav class="ws-nav" id="ws-nav"></nav>
+      <div class="ws-sidebar-footer">
+        <a href="/docs.html" target="_blank" rel="noopener">Documentación</a>
+        ·
+        <a href="/status.html" target="_blank" rel="noopener">Estado</a>
+        <br>
+        <a id="admin-external-link" href="https://dtunnel-admin.desarrollado.com/" target="_blank" rel="noopener" hidden>Panel admin</a>
+      </div>
+    </aside>
 
-    <div class="docs-callout" style="margin-bottom:2rem;max-width:720px">
-      <p style="margin:0 0 0.75rem"><strong>Subdominio</strong> = el nombre de tu URL.
-      <strong>Reserva</strong> = guardar ese nombre en tu cuenta.
-      <strong>Túnel</strong> = la conexión activa hacia tu <code>localhost</code>.</p>
-      <p style="margin:0;font-size:0.9rem;color:var(--md-sys-color-on-surface-variant)">
-        Reservar aquí <em>no abre</em> el túnel. Después usa el CLI:
-        <code>dtunnel --port 3000 --subdomain &lt;nombre&gt;</code>.
-        <a href="/docs.html#cuentas">Más detalle en la documentación</a>.
-      </p>
+    <div class="ws-main">
+      <header class="ws-topbar">
+        <button type="button" class="ws-sidebar-toggle" id="sidebar-toggle" aria-label="Menú">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <nav class="ws-breadcrumb" id="ws-breadcrumb" aria-label="Ruta"></nav>
+        <div class="ws-topbar-actions">
+          <span class="ws-user-chip" id="user-email"></span>
+          <button type="button" class="btn btn-ghost btn-sm" id="logout-btn">Salir</button>
+        </div>
+      </header>
+
+      <main class="ws-content">
+        <section class="ws-panel active" id="panel-overview" data-route="overview"></section>
+        <section class="ws-panel" id="panel-subdomains" data-route="subdomains"></section>
+        <section class="ws-panel" id="panel-tunnels" data-route="tunnels"></section>
+        <section class="ws-panel" id="panel-traces" data-route="traces"></section>
+        <section class="ws-panel" id="panel-billing" data-route="billing"></section>
+        <section class="ws-panel" id="panel-security" data-route="security"></section>
+        <section class="ws-panel" id="panel-cli" data-route="cli"></section>
+      </main>
     </div>
+  </div>
 
-    <h2>Reservar un nombre</h2>
-    <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">
-      Reclama un subdominio para tu cuenta (ej. <code>mi-api</code> → <code>mi-api.dtunnel.desarrollado.com</code>).
-      La URL solo responderá cuando abras un túnel con ese nombre en el CLI.
-    </p>
-    <form id="reserve-form" class="auth-form" style="max-width:400px;margin-bottom:2rem">
-      <md-outlined-text-field id="name" label="Nombre (ej. mi-api)" pattern="[a-z0-9-]{3,32}" required></md-outlined-text-field>
-      <p id="reserve-msg" class="form-error" hidden></p>
-      <button type="submit" class="btn btn-primary">Reservar nombre</button>
-    </form>
+  <div class="ws-toast-container" id="toast-container"></div>
 
-    <h2>Mis nombres reservados</h2>
-    <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">
-      Estos nombres son tuyos mientras tu cuenta esté activa. Si el enlace da 404, abre un túnel con
-      <code>dtunnel --port &lt;puerto&gt; --subdomain &lt;nombre&gt;</code>.
-    </p>
-    <ul id="subdomains" style="list-style:none"></ul>
+  <button type="button" class="theme-fab" id="theme-toggle" aria-label="Cambiar tema">
+    <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+  </button>
 
-    <h2 style="margin-top:2rem">Túneles activos</h2>
-    <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">
-      Conexiones abiertas ahora mismo desde el CLI. Ciérralas con <code>dtunnel down</code> o desde aquí.
-    </p>
-    <div class="table-wrap" style="max-width:720px;margin-bottom:2rem">
-      <table class="admin-table" id="tunnels-table">
-        <thead>
-          <tr>
-            <th>Subdominio</th>
-            <th>Puerto local</th>
-            <th>URL</th>
-            <th>Desde</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tunnels-body">
-          <tr><td colspan="5" class="text-muted">Cargando…</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h2 style="margin-top:2rem">Seguridad</h2>
-    <form id="password-form" class="auth-form" style="max-width:400px;margin-bottom:2rem">
-      <md-outlined-text-field id="current-password" type="password" label="Contraseña actual" required></md-outlined-text-field>
-      <md-outlined-text-field id="new-password" type="password" label="Nueva contraseña (mín. 8)" required minlength="8"></md-outlined-text-field>
-      <p id="password-msg" class="form-error" hidden></p>
-      <p id="password-ok" class="form-success" hidden></p>
-      <button type="submit" class="btn btn-primary">Cambiar contraseña</button>
-    </form>
-
-    <h2 style="margin-top:2rem">Abrir un túnel (CLI)</h2>
-    <p class="text-muted" style="margin:-0.5rem 0 1rem;font-size:0.9rem">Paso 1 ya lo hiciste al reservar. Paso 2 es cuando quieras exponer tu app:</p>
-    <pre><code>dtunnel login
-dtunnel reserve mi-api              # solo la primera vez
-dtunnel --port 88080 --subdomain mi-api   # cada vez que trabajes
-dtunnel down                        # al terminar (la reserva sigue)</code></pre>
-  </main>
-  <script>
-    const token = localStorage.getItem('dtunnel_token');
-    if (!token) window.location.href = '/login.html';
-
-    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-
-    function fmtDate(value) {
-      if (!value) return '—';
-      return new Date(value.includes('T') ? value : `${value}Z`).toLocaleString('es');
-    }
-
-    async function closeTunnel(subdomain) {
-      if (!confirm(`¿Cerrar el túnel "${subdomain}"? La reserva del nombre no se elimina.`)) return;
-      const res = await fetch(`/api/tunnels/${encodeURIComponent(subdomain)}`, { method: 'DELETE', headers });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        alert(data.error || 'No se pudo cerrar el túnel');
-        return;
-      }
-      loadTunnels();
-    }
-
-    async function loadTunnels() {
-      const tbody = document.getElementById('tunnels-body');
-      try {
-        const res = await fetch('/api/tunnels', { headers });
-        if (!res.ok) throw new Error('No se pudieron cargar los túneles');
-        const data = await res.json();
-        tbody.innerHTML = data.tunnels.length
-          ? data.tunnels.map((t) => `
-            <tr>
-              <td><code>${t.subdomain}</code></td>
-              <td>${t.port}</td>
-              <td><a href="${t.httpsUrl}" target="_blank" rel="noopener">${t.subdomain}.dtunnel.desarrollado.com</a></td>
-              <td>${fmtDate(t.createdAt)}</td>
-              <td><button type="button" class="btn btn-ghost btn-sm" data-close-tunnel="${t.subdomain}">Cerrar</button></td>
-            </tr>
-          `).join('')
-          : '<tr><td colspan="5" class="text-muted">Ningún túnel activo. Abre uno con el CLI.</td></tr>';
-        tbody.querySelectorAll('[data-close-tunnel]').forEach((btn) => {
-          btn.addEventListener('click', () => closeTunnel(btn.dataset.closeTunnel));
-        });
-      } catch {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-muted">No se pudieron cargar los túneles</td></tr>';
-      }
-    }
-
-    async function releaseSubdomain(name) {
-      if (!confirm(`¿Liberar el nombre "${name}"? Otro usuario podrá reservarlo.`)) return;
-      const res = await fetch(`/api/subdomains/${encodeURIComponent(name)}`, { method: 'DELETE', headers });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        alert(data.error || 'No se pudo liberar el subdominio');
-        return;
-      }
-      loadMe();
-    }
-
-    async function loadMe() {
-      const res = await fetch('/api/me', { headers });
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 403 && data.code === 'EMAIL_NOT_VERIFIED') {
-        sessionStorage.setItem('dtunnel_pending_email', data.email || localStorage.getItem('dtunnel_email') || '');
-        window.location.href = '/verify-pending.html';
-        return;
-      }
-      if (!res.ok) { window.location.href = '/login.html'; return; }
-      document.getElementById('email').textContent = data.email;
-      document.getElementById('plan-info').textContent =
-        `Plan: ${data.planName || data.plan} · Túneles simultáneos: ${data.limits?.tunnelLimit ?? '—'} · Nombres reservables: ${data.limits?.reservedSubdomainLimit ?? '—'}`;
-      if (data.isAdmin) document.getElementById('admin-link').hidden = false;
-      const ul = document.getElementById('subdomains');
-      ul.innerHTML = data.subdomains.length
-        ? data.subdomains.map(s => `
-          <li style="margin-bottom:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center">
-            <a href="https://${s}.dtunnel.desarrollado.com">${s}.dtunnel.desarrollado.com</a>
-            <span class="text-muted" style="font-size:0.85rem">— requiere túnel activo</span>
-            <button type="button" class="btn btn-ghost btn-sm" data-release="${s}">Liberar</button>
-          </li>
-        `).join('')
-        : '<li class="text-muted">Ningún nombre reservado aún. Usa el formulario de arriba o <code>dtunnel reserve mi-api</code>.</li>';
-      ul.querySelectorAll('[data-release]').forEach((btn) => {
-        btn.addEventListener('click', () => releaseSubdomain(btn.dataset.release));
-      });
-      loadTunnels();
-    }
-
-    document.getElementById('reserve-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msg = document.getElementById('reserve-msg');
-      msg.hidden = true;
-      try {
-        const res = await fetch('/api/subdomains/reserve', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ name: document.getElementById('name').value }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        loadMe();
-        document.getElementById('name').value = '';
-      } catch (err) {
-        msg.textContent = err.message;
-        msg.hidden = false;
-      }
-    });
-
-    document.getElementById('password-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msg = document.getElementById('password-msg');
-      const ok = document.getElementById('password-ok');
-      msg.hidden = true;
-      ok.hidden = true;
-      try {
-        const res = await fetch('/api/auth/change-password', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            currentPassword: document.getElementById('current-password').value,
-            password: document.getElementById('new-password').value,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error');
-        ok.textContent = 'Contraseña actualizada.';
-        ok.hidden = false;
-        document.getElementById('password-form').reset();
-      } catch (err) {
-        msg.textContent = err.message;
-        msg.hidden = false;
-      }
-    });
-
-    document.getElementById('logout').addEventListener('click', (e) => {
-      e.preventDefault();
-      localStorage.removeItem('dtunnel_token');
-      localStorage.removeItem('dtunnel_email');
-      window.location.href = '/';
-    });
-
-    loadMe();
-  </script>
+  <script type="module" src="/js/app.js"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>

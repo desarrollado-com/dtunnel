@@ -8,31 +8,22 @@ Repo: https://github.com/desarrollado-com/dtunnel
 
 Self-hosted HTTP tunnel (Tunnelmole / ngrok style):
 
-- **server/**: `frps` en VPS (Docker)
-- **api/**: Node.js — auth, túneles, subdominios, SMTP (recuperación de contraseña)
+- **api/**: Node.js — auth, túneles nativos (WebSocket + gateway :18080), admin, SMTP
 - **admin-web/**: panel superadmin → `dtunnel-admin.desarrollado.com`
-- **client/**: CLI npm `@desarrollado/dtunnel` (auto-instala `frpc` en `~/.dtunnel/bin/`)
-- **install/dtunnel/**: instalador curl (frpc + CLI bash)
+- **client/**: CLI npm `@desarrollado/dtunnel` (`native-client.js`)
+- **install/dtunnel/**: instalador curl (CLI npm)
+- **server/**: plantillas Hestia + `verify-vps.sh`
 - **web/**: landing, docs, dashboard → `public_html` principal
 - **deploy/**: scripts Python de despliegue
 
 ## Comandos
 
 ```bash
-# Desplegar todo al VPS (server, api, web, admin-web)
 python deploy/deploy.py
-
-# Despliegues parciales
+python deploy/upload-api.py
 python deploy/upload-web.py
 python deploy/upload-admin.py
-python deploy/upload-api.py
-python deploy/upload-install.py
 
-# Operaciones en producción
-python deploy/tunnels.py list
-python deploy/tunnels.py purge-anon
-
-# Cliente local (desarrollo)
 cd client && npm link
 dtunnel --port 88080
 ```
@@ -40,20 +31,18 @@ dtunnel --port 88080
 ## Reglas
 
 1. Secrets en `secretos/.env.dtunnel` — nunca commitear.
-2. `server/.env` y `api/.env` contienen tokens — están en `.gitignore`.
-3. Plantilla Hestia: apex → Apache/API, wildcard → frps:18080.
-4. No usar puerto 8080 para frps (conflicto Apache Hestia).
-5. Panel admin en subdominio separado; CORS en API incluye `dtunnel-admin.desarrollado.com`.
+2. `api/.env` en el VPS — no commitear.
+3. Plantilla Hestia: apex → Apache/API, wildcard → gateway nativo `127.0.0.1:18080`.
+4. No usar puerto 8080 para el gateway (conflicto Apache Hestia).
+5. Panel admin en subdominio separado; CORS incluye `dtunnel-admin.desarrollado.com`.
 
 ## Archivos clave
 
 | Archivo | Propósito |
 |---------|-----------|
-| `docs/product-plan.md` | Plan de producto |
-| `docs/monitoring.md` | UptimeRobot + cron de purga |
-| `server/hestia/dtunnel.stpl` | Nginx split HTTPS |
+| `api/src/tunnel/native.js` | Gateway HTTP + WebSocket túnel |
 | `api/src/index.js` | API REST |
-| `admin-web/js/admin.js` | Panel superadmin |
-| `client/bin/dtunnel.js` | CLI Node |
-| `web/dashboard.html` | Cuenta de usuario |
+| `client/bin/dtunnel.js` | CLI |
+| `client/bin/native-client.js` | Proceso túnel local |
+| `server/hestia/dtunnel.stpl` | Nginx split HTTPS |
 | `deploy/deploy.py` | Despliegue completo |

@@ -1,9 +1,0 @@
-services:
-  frps:
-    image: snowdreamtech/frps:0.61.1
-    container_name: dtunnel_frps
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - ./frps.runtime.json:/etc/frp/frps.json:ro
-    command: ["-c", "/etc/frp/frps.json"]

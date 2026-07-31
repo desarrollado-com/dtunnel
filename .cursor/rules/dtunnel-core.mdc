@@ -8,6 +8,6 @@ alwaysApply: true
 Túnel HTTP self-hosted: `https://{name}.dtunnel.desarrollado.com` → localhost del desarrollador.
 
 - Workspace **solo dtunnel** — no mezclar devdocker ni DNS local `lh`.
-- v1 = frp (`frps` en VPS, `frpc` + `dtunnel.sh` en cliente).
+- Túnel nativo: CLI WebSocket + gateway HTTP en la API (`:18080`).
 - Hestia ya tiene `dtunnel.desarrollado.com` + `www` + `*.dtunnel` como alias.
 - Ver `AGENTS.md` y `docs/hestia.md` antes de cambiar despliegue.

@@ -3,7 +3,91 @@
 Todos los cambios notables de dtunnel se documentan en este archivo.
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
-Versionado según [Semantic Versioning](https://semver.org/lang/es/).
+Versionado según [Semantic Versioning](https://semver.org/lang/es/). Política: [docs/versioning.md](docs/versioning.md).
+
+## [2.6.1] - 2026-07-31
+
+### Corregido
+
+- **Consola admin en vivo** — plantilla Hestia `/api/` ahora reenvía `Upgrade`/`Connection` para WebSockets (`/admin/ws/console`, `/admin/ws/metrics`, trazas usuario).
+
+### Añadido
+
+- `scripts/smoke-test.mjs` — comprobaciones post-deploy (`npm run test:smoke` en `api/`).
+
+## [2.6.0] - 2026-07-31
+
+Versión **menor (Y)**: eliminación completa de frp/frpc.
+
+### Eliminado
+
+- Modo legacy `frpc` / `frps`, flags `--frp`, `--legacy`, comando `install-frpc`.
+- Variables `FRPS_*`, `TUNNEL_TRANSPORT` y broker Docker `dtunnel_frps`.
+- Módulo `client/bin/frpc-install.js`, `server/install.sh`, `server/docker-compose.yml`.
+
+### Cambiado
+
+- API y CLI usan únicamente túnel nativo (WebSocket + gateway HTTP en la API).
+- Deploy simplificado: solo API Docker + plantillas Hestia → `:18080`.
+- **Dashboard usuario** (`/dashboard.html`) — consola tipo admin: sidebar, paneles, tráfico en vivo, planes integrados.
+- Páginas de auth (login, registro, verificación, recuperación) con el mismo diseño workspace.
+
+## [2.5.0] - 2026-07-31
+
+Versión **menor (Y)**: centro de seguridad admin, listas IP, detección de amenazas y workspace IDE.
+
+### Añadido
+
+- **Auditoría de seguridad** en admin: túneles + estado de lista negra, dispositivos, amenazas.
+- Tablas `ip_blacklist`, `ip_whitelist`, `abuse_events`, `device_fingerprints`.
+- Escáner de tráfico en túneles (SQLi, path traversal, sondeo panel, XSS).
+- Auto-bloqueo de IP tras eventos críticos o 3+ incidentes/hora.
+- API `/admin/security/*` — listas, eventos, dispositivos, bloqueo IP.
+- Metadatos en apertura de túnel: IP (todos), User-Agent, versión CLI, huella de dispositivo.
+- **Workspace dtunnel** — IDE web (Monaco) con plantilla Node + terminal simulada.
+- Tutoriales interactivos paso a paso en panel Seguridad.
+
+## [2.4.0] - 2026-07-31
+
+Versión **menor (Y)**: consola admin unificada en tiempo real.
+
+### Añadido
+
+- **Consola en vivo** en dtunnel-admin: métricas, gráfico de túneles, feed unificado de trazas HTTP y auditoría.
+- WebSocket `/api/admin/ws/console` — eventos `init`, `metrics`, `trace`, `audit`.
+- Filtros (todo / HTTP / auditoría), pausar scroll y limpiar feed.
+
+## [2.3.0] - 2026-07-31
+
+Versión **menor (Y)**: planes públicos/privados y suscripciones.
+
+### Añadido
+
+- Planes **públicos** (`visibility=public`) en landing y **privados** (`private`) con tabla `plan_grants`.
+- API: `GET /billing/plans`, `/billing/subscription`, `/billing/subscriptions`.
+- Admin: panel **Suscripciones**, conceder/revocar acceso a planes privados por usuario.
+- Página `/billing.html` — elegir plan, ver suscripción activa e historial.
+- Plan seed **partner** (privado). Activación gratuita de plan `free` vía checkout.
+
+## [2.2.0] - 2026-07-31
+
+Versión **menor (Y)**: nuevas funciones; compatible con 2.1.x.
+
+### Añadido
+
+- **Trazas HTTP** — registro de solicitudes por túnel; historial y WebSocket en tiempo real (`/api/request-logs`, dashboard usuario, panel admin «Trazas HTTP»).
+- **CLI** `dtunnel logs` y `dtunnel logs --follow [-s subdominio]`.
+- Consola admin tipo cloud: analítica, sistema, organizaciones, cupones, roles RBAC con CRUD.
+- Billing y organizaciones (API Wompi-ready), planes empresariales unificados.
+- **2FA TOTP** para cuentas admin; impersonación de usuarios con auditoría.
+- WebSocket de métricas en vivo en el panel admin (`/admin/ws/metrics`).
+- Asignación de roles RBAC al editar usuarios en admin.
+
+### Corregido
+
+- Sidebar del admin sin scroll (ítems inferiores inaccesibles).
+- Botón flotante de tema no respondía al clic.
+- Roles y cupones en admin: formularios modales CRUD (antes solo lectura o `prompt`).
 
 ## [2.1.0] - 2026-07-30
 

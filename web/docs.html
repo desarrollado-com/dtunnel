@@ -24,7 +24,7 @@
       <a href="/">Inicio</a>
       <a href="/docs.html">Documentación</a>
       <a href="/changelog.html">Changelog</a>
-      <div class="nav-actions">
+      <div class="nav-actions" data-auth-nav>
         <a href="/register.html" class="btn btn-outlined">Registrarse</a>
         <a href="/login.html" class="btn btn-primary">Iniciar sesión</a>
       </div>
@@ -197,8 +197,8 @@ dtunnel --port 3000</code></pre>
         <p>En <strong>modo desarrollo</strong> (<code>next dev</code>), dtunnel elimina automáticamente cabeceras
           como <code>Origin</code> al reenviar a tu <code>localhost</code>, para que Next.js no bloquee los assets
           (no hace falta <code>allowedDevOrigins</code> en la mayoría de casos).</p>
-        <p>Si usas <code>basePath</code>, abre la URL con ese prefijo. El hot-reload (HMR) por WebSocket puede no
-          funcionar; para demos usa <code>next build && next start</code>.</p>
+        <p>Si usas <code>basePath</code>, abre la URL con ese prefijo. El hot-reload (HMR) usa WebSocket
+          y está soportado desde el CLI <strong>2.0.9</strong> (Next.js <code>next dev</code>, Vite, NestJS WS).</p>
         <p>En el otro PC:</p>
         <pre><code>dtunnel --port 3000
 dtunnel status   # debe mostrar el túnel activo
@@ -342,7 +342,7 @@ curl http://127.0.0.1:3000/portal-pmo-frontend   # debe responder antes del tún
         <pre><code>dtunnel register          # o dtunnel login
 dtunnel reserve mi-api    # guarda "mi-api" en tu cuenta — NO abre túnel</code></pre>
         <p>
-          También puedes reservar desde el <a href="/dashboard.html">panel web</a> tras
+          También puedes reservar desde el <a href="/dashboard.html#/subdomains">panel web</a> tras
           <a href="/login.html">iniciar sesión</a> ·
           <a href="/forgot-password.html">olvidé mi contraseña</a>.
           En este punto <code>https://mi-api.dtunnel.desarrollado.com</code> <strong>aún no responde</strong>:
@@ -836,6 +836,7 @@ Authorization: Bearer &lt;token&gt;
   <script src="/js/docs.js"></script>
   <script src="/js/mermaid-init.js" type="module"></script>
   <script src="/js/site-footer.js"></script>
+  <script src="/js/nav-auth.js"></script>
   <script src="/js/theme.js"></script>
 </body>
 </html>
