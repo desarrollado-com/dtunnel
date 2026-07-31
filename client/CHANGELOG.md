@@ -2,6 +2,12 @@
 
 Historial del paquete npm. Changelog completo del proyecto: [../CHANGELOG.md](../CHANGELOG.md).
 
+## [2.0.4] - 2026-07-30
+
+### Mejorado
+
+- Reenvío de cabeceras `X-Forwarded-*` al backend local (mejor compatibilidad con Next.js y proxies).
+
 ## [2.0.3] - 2026-07-30
 
 ### Añadido

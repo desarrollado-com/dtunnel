@@ -61,6 +61,16 @@ function proxyHttpToTunnel(req, res, subdomain, entry) {
   const headers = { ...req.headers };
   delete headers.host;
   delete headers.connection;
+  const publicHost = headers['x-forwarded-host'] || req.headers.host;
+  if (publicHost && !headers['x-forwarded-host']) {
+    headers['x-forwarded-host'] = publicHost;
+  }
+  if (!headers['x-forwarded-proto']) {
+    headers['x-forwarded-proto'] = 'https';
+  }
+  if (!headers['x-forwarded-for']) {
+    headers['x-forwarded-for'] = req.socket?.remoteAddress || '';
+  }
 
   const timer = setTimeout(() => {
     pending.delete(id);

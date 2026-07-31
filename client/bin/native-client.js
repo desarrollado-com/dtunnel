@@ -25,11 +25,20 @@ function filterHeaders(headers) {
   return out;
 }
 
+function buildLocalHeaders(incoming) {
+  const headers = filterHeaders(incoming);
+  // Node fetch sets Host from the URL; keep forwarded metadata for apps behind a proxy (Next.js, etc.).
+  if (!headers['x-forwarded-proto'] && !headers['X-Forwarded-Proto']) {
+    headers['x-forwarded-proto'] = 'https';
+  }
+  return headers;
+}
+
 async function forwardToLocal({ method, path, headers, body }, localHost, localPort) {
   const url = `http://${localHost}:${localPort}${path}`;
   const init = {
     method: method || 'GET',
-    headers: filterHeaders(headers),
+    headers: buildLocalHeaders(headers),
   };
   if (body) init.body = Buffer.from(body, 'base64');
   const res = await fetch(url, init);

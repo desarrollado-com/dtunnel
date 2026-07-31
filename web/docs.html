@@ -178,6 +178,7 @@ http://a7f3c2.dtunnel.desarrollado.com   ⟶  http://localhost:88080</code></pre
         <div class="docs-callout docs-callout-warn">
           El puerto de <code>dtunnel --port</code> debe coincidir con el puerto donde escucha tu aplicación local.
           Si Vite usa <code>5173</code>, ejecuta <code>dtunnel --port 5173</code>.
+        </div>
 
         <h3>Docker y otros hostnames</h3>
         <p>Por defecto el túnel reenvía a <code>127.0.0.1:PUERTO</code>. Si tu app no escucha en localhost
@@ -188,7 +189,24 @@ dtunnel config set localHost mi-proyecto
 dtunnel --port 3000</code></pre>
         <p>El CLI debe poder resolver ese nombre (misma red Docker, entrada en <code>/etc/hosts</code>, etc.).
           Comprueba con <code>curl http://mi-proyecto:3000</code> desde la máquina donde corre <code>dtunnel</code>.</p>
-        </div>
+
+        <h3>Next.js (dev con <code>basePath</code>)</h3>
+        <p>Si tu app usa <code>basePath: '/portal-pmo-frontend'</code>, abre la URL <strong>con ese prefijo</strong>:</p>
+        <pre><code>https://TU-SUBDOMINIO.dtunnel.desarrollado.com/portal-pmo-frontend</code></pre>
+        <p>La raíz <code>/</code> devolverá 404 — es normal si Next solo vive bajo el <code>basePath</code>.</p>
+        <p>En <strong>modo desarrollo</strong> (<code>next dev</code>), Next.js 15+ bloquea peticiones desde dominios
+          distintos de <code>localhost</code>. Añade en <code>next.config.js</code> o <code>next.config.ts</code>:</p>
+        <pre><code>const nextConfig = {
+  basePath: '/portal-pmo-frontend', // si ya lo usas
+  allowedDevOrigins: ['*.dtunnel.desarrollado.com'],
+};
+export default nextConfig;</code></pre>
+        <p>Reinicia <code>next dev</code> tras cambiar la config. El hot-reload (HMR) por WebSocket puede no funcionar
+          a través del túnel; la página sí debería cargar. Para demos estables usa <code>next build && next start</code>.</p>
+        <p>En el otro PC:</p>
+        <pre><code>dtunnel --port 3000
+dtunnel status   # debe mostrar el túnel activo
+curl http://127.0.0.1:3000/portal-pmo-frontend   # debe responder antes del túnel</code></pre>
       </section>
 
       <!-- CLI -->
